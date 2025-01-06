@@ -7,6 +7,7 @@ from tqdm.auto import tqdm
 
 from src.datasets.data_utils import inf_loop
 from src.metrics.tracker import MetricTracker
+from src.reward_models.base_model import BaseModel
 from src.utils.io_utils import ROOT_PATH
 
 
@@ -17,13 +18,19 @@ class BaseTrainer:
 
     def __init__(
         self,
-        model,
-        criterion,
+        *,
+        vae: torch.nn.Module,
+        text_encoder: torch.nn.Module,
+        noise_scheduler,
+        latent_model: torch.nn.Module,
+        frozen_latent_model: torch.nn.Module,
+        reward_model: BaseModel,
         metrics,
         optimizer,
         lr_scheduler,
         config,
         device,
+        weight_dtype,
         dataloaders,
         logger,
         writer,
@@ -62,12 +69,24 @@ class BaseTrainer:
 
         self.device = device
         self.skip_oom = skip_oom
+        self.weight_dtype = weight_dtype
 
         self.logger = logger
         self.log_step = config.trainer.get("log_step", 50)
 
-        self.model = model
-        self.criterion = criterion
+        self.vae = vae
+        self.text_encoder = text_encoder
+        self.noise_scheduler = noise_scheduler
+        self.frozen_latent_model = frozen_latent_model
+        self.latent_model = latent_model
+        self.reward_model = reward_model
+
+        self.vae.requires_grad_(False)
+        self.text_encoder.requires_grad_(False)
+        self.reward_model.requires_grad_(False)
+        if self.frozen_latent_model is not None:
+            self.frozen_latent_model.requires_grad_(False)
+
         self.optimizer = optimizer
         self.lr_scheduler = lr_scheduler
         self.batch_transforms = batch_transforms
@@ -186,6 +205,12 @@ class BaseTrainer:
             if stop_process:  # early_stop
                 break
 
+    @abstractmethod
+    def process_batch(
+        self, batch: dict[str, torch.Tensor], metrics: MetricTracker
+    ) -> None:
+        raise NotImplementedError
+
     def _train_epoch(self, epoch):
         """
         Training logic for an epoch, including logging and evaluation on
@@ -198,7 +223,7 @@ class BaseTrainer:
                 this epoch.
         """
         self.is_train = True
-        self.model.train()
+        self.latent_model.train()
         self.train_metrics.reset()
         self.writer.set_step((epoch - 1) * self.epoch_len)
         self.writer.add_scalar("epoch", epoch)
@@ -261,7 +286,7 @@ class BaseTrainer:
             logs (dict): logs that contain the information about evaluation.
         """
         self.is_train = False
-        self.model.eval()
+        self.latent_model.eval()
         self.evaluation_metrics.reset()
         with torch.no_grad():
             for batch_idx, batch in tqdm(
@@ -380,7 +405,7 @@ class BaseTrainer:
         """
         if self.config["trainer"].get("max_grad_norm", None) is not None:
             clip_grad_norm_(
-                self.model.parameters(), self.config["trainer"]["max_grad_norm"]
+                self.latent_model.parameters(), self.config["trainer"]["max_grad_norm"]
             )
 
     @torch.no_grad()
@@ -393,7 +418,7 @@ class BaseTrainer:
         Returns:
             total_norm (float): the calculated norm.
         """
-        parameters = self.model.parameters()
+        parameters = self.latent_model.parameters()
         if isinstance(parameters, torch.Tensor):
             parameters = [parameters]
         parameters = [p for p in parameters if p.grad is not None]
@@ -462,11 +487,11 @@ class BaseTrainer:
                 'model_best.pth'(do not duplicate the checkpoint as
                 checkpoint-epochEpochNumber.pth)
         """
-        arch = type(self.model).__name__
+        arch = type(self.latent_model).__name__
         state = {
             "arch": arch,
             "epoch": epoch,
-            "state_dict": self.model.state_dict(),
+            "state_dict": self.latent_model.state_dict(),
             "optimizer": self.optimizer.state_dict(),
             "lr_scheduler": self.lr_scheduler.state_dict(),
             "monitor_best": self.mnt_best,
@@ -509,7 +534,7 @@ class BaseTrainer:
                 "Warning: Architecture configuration given in the config file is different from that "
                 "of the checkpoint. This may yield an exception when state_dict is loaded."
             )
-        self.model.load_state_dict(checkpoint["state_dict"])
+        self.latent_model.load_state_dict(checkpoint["state_dict"])
 
         # load optimizer state from checkpoint only when optimizer type is not changed.
         if (
@@ -548,6 +573,6 @@ class BaseTrainer:
         checkpoint = torch.load(pretrained_path, self.device)
 
         if checkpoint.get("state_dict") is not None:
-            self.model.load_state_dict(checkpoint["state_dict"])
+            self.latent_model.load_state_dict(checkpoint["state_dict"])
         else:
-            self.model.load_state_dict(checkpoint)
+            self.latent_model.load_state_dict(checkpoint)

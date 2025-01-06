@@ -1,5 +1,6 @@
 from itertools import repeat
 
+import torch
 from hydra.utils import instantiate
 
 from src.datasets.collate import collate_fn
@@ -43,7 +44,7 @@ def move_batch_transforms_to_device(batch_transforms, device):
                 transforms[transform_name] = transforms[transform_name].to(device)
 
 
-def get_dataloaders(config, device):
+def get_dataloaders(config, device: torch.device, all_models_with_tokenizer: list):
     """
     Create dataloaders for each of the dataset partitions.
     Also creates instance and batch transforms.

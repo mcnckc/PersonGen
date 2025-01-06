@@ -4,9 +4,10 @@ import hydra
 import torch
 from hydra.utils import instantiate
 from omegaconf import OmegaConf
+from transformers import PreTrainedTokenizer
 
 from src.datasets.data_utils import get_dataloaders
-from src.trainer import Trainer
+from src.trainer.refl_trainer import ReFLTrainer
 from src.utils.init_utils import set_random_seed, setup_saving_and_logging
 
 warnings.filterwarnings("ignore", category=UserWarning)
@@ -33,13 +34,23 @@ def main(config):
     else:
         device = config.trainer.device
 
+    # build stable diffusion models
+    model = instantiate(config.train_model).to(device)
+
+    # build reward models
+    reward_models = instantiate(config.train_model).to(device)
+    train_reward_model = reward_models["train_model"]
+    all_models_with_tokenizer = reward_models["val_models"]
+    all_models_with_tokenizer.append(train_reward_model)
+    all_models_with_tokenizer.append(model)
+
     # setup data_loader instances
     # batch_transforms should be put on device
-    dataloaders, batch_transforms = get_dataloaders(config, device)
-
-    # build model architecture, then print to console
-    model = instantiate(config.model).to(device)
-    logger.info(model)
+    dataloaders, batch_transforms = get_dataloaders(
+        config,
+        device=device,
+        all_models_with_tokenizer=all_models_with_tokenizer,
+    )
 
     # get function handles of loss and metrics
     loss_function = instantiate(config.loss_function).to(device)
