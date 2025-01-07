@@ -24,10 +24,7 @@ class PickScore(BaseModel):
 
         self.device = device
 
-    def tokenize(
-        self, batch: tp.Dict[str, tp.Any], caption_column: str
-    ) -> tp.Dict[str, torch.Tensor]:
-        caption = batch[caption_column]
+    def tokenize(self, caption: str) -> tp.Dict[str, torch.Tensor]:
         processed_caption = self.processor(
             text=caption,
             padding="max_length",
@@ -35,6 +32,7 @@ class PickScore(BaseModel):
             max_length=77,
             return_tensors="pt",
         )
+
         return {
             f"{DatasetColumns.tokenized_text.name}_{self.model_suffix}": processed_caption.input_ids,
             f"{DatasetColumns.text_attention_mask.name}_{self.model_suffix}": processed_caption.attention_mask,

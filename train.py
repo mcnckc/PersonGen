@@ -4,7 +4,7 @@ import hydra
 import torch
 from hydra.utils import instantiate
 from omegaconf import OmegaConf
-from transformers import PreTrainedTokenizer
+from torch.cuda.amp import GradScaler
 
 from src.datasets.data_utils import get_dataloaders
 from src.trainer.refl_trainer import ReFLTrainer
@@ -13,7 +13,7 @@ from src.utils.init_utils import set_random_seed, setup_saving_and_logging
 warnings.filterwarnings("ignore", category=UserWarning)
 
 
-@hydra.main(version_base=None, config_path="src/configs", config_name="baseline")
+@hydra.main(version_base=None, config_path="src/configs", config_name="refl_train")
 def main(config):
     """
     Main script for training. Instantiates the model, optimizer, scheduler,
@@ -34,15 +34,27 @@ def main(config):
     else:
         device = config.trainer.device
 
+    # accelerator = instantiate(config.accelerator)
+    # weight_dtype = torch.float16 if accelerator.mixed_precision == "fp16" else torch.float32
+
+    # device = accelerator.device
+
+    model = instantiate(config.model).to(device)
     # build stable diffusion models
-    model = instantiate(config.train_model).to(device)
 
     # build reward models
-    reward_models = instantiate(config.train_model).to(device)
-    train_reward_model = reward_models["train_model"]
-    all_models_with_tokenizer = reward_models["val_models"]
-    all_models_with_tokenizer.append(train_reward_model)
-    all_models_with_tokenizer.append(model)
+    train_reward_model = instantiate(
+        config.reward_models["train_model"], device=device
+    ).to(device)
+    train_reward_model.requires_grad_(False)
+
+    val_reward_models = []
+    for reward_model_config in config.reward_models["val_models"]:
+        reward_model = instantiate(reward_model_config, device=device).to(device)
+        reward_model.requires_grad_(False)
+        val_reward_models.append(reward_model)
+
+    all_models_with_tokenizer = val_reward_models + [model, train_reward_model]
 
     # setup data_loader instances
     # batch_transforms should be put on device
@@ -53,24 +65,26 @@ def main(config):
     )
 
     # get function handles of loss and metrics
-    loss_function = instantiate(config.loss_function).to(device)
     metrics = instantiate(config.metrics)
 
     # build optimizer, learning rate scheduler
     trainable_params = filter(lambda p: p.requires_grad, model.parameters())
     optimizer = instantiate(config.optimizer, params=trainable_params)
     lr_scheduler = instantiate(config.lr_scheduler, optimizer=optimizer)
+    scaler = GradScaler()
 
     # epoch_len = number of iterations for iteration-based training
     # epoch_len = None or len(dataloader) for epoch-based training
     epoch_len = config.trainer.get("epoch_len")
 
-    trainer = Trainer(
+    trainer = ReFLTrainer(
         model=model,
-        criterion=loss_function,
+        train_reward_model=train_reward_model,
+        val_reward_models=val_reward_models,
         metrics=metrics,
         optimizer=optimizer,
         lr_scheduler=lr_scheduler,
+        scaler=scaler,
         config=config,
         device=device,
         dataloaders=dataloaders,

@@ -3,8 +3,10 @@ from abc import abstractmethod
 import torch
 from numpy import inf
 from torch.nn.utils import clip_grad_norm_
+from torchvision import transforms
 from tqdm.auto import tqdm
 
+from src.constants.dataset import DatasetColumns
 from src.datasets.data_utils import inf_loop
 from src.metrics.tracker import MetricTracker
 from src.reward_models.base_model import BaseModel
@@ -19,18 +21,15 @@ class BaseTrainer:
     def __init__(
         self,
         *,
-        vae: torch.nn.Module,
-        text_encoder: torch.nn.Module,
-        noise_scheduler,
-        latent_model: torch.nn.Module,
-        frozen_latent_model: torch.nn.Module,
-        reward_model: BaseModel,
+        model: torch.nn.Module,
+        train_reward_model: BaseModel,
+        val_reward_models: list[BaseModel],
         metrics,
         optimizer,
         lr_scheduler,
+        scaler,
         config,
         device,
-        weight_dtype,
         dataloaders,
         logger,
         writer,
@@ -69,30 +68,36 @@ class BaseTrainer:
 
         self.device = device
         self.skip_oom = skip_oom
-        self.weight_dtype = weight_dtype
 
         self.logger = logger
         self.log_step = config.trainer.get("log_step", 50)
 
-        self.vae = vae
-        self.text_encoder = text_encoder
-        self.noise_scheduler = noise_scheduler
-        self.frozen_latent_model = frozen_latent_model
-        self.latent_model = latent_model
-        self.reward_model = reward_model
+        self.model = model
+        self.train_reward_model = train_reward_model
+        self.val_reward_models = val_reward_models
+        self.image_processor = transforms.Compose(
+            [
+                transforms.Resize(
+                    224, interpolation=transforms.InterpolationMode.BICUBIC
+                ),
+                transforms.Normalize(
+                    (0.48145466, 0.4578275, 0.40821073),
+                    (0.26862954, 0.26130258, 0.27577711),
+                ),
+            ]
+        )
 
-        self.vae.requires_grad_(False)
-        self.text_encoder.requires_grad_(False)
-        self.reward_model.requires_grad_(False)
-        if self.frozen_latent_model is not None:
-            self.frozen_latent_model.requires_grad_(False)
+        # if self.frozen_latent_model is not None:
+        #     self.frozen_latent_model.requires_grad_(False)
 
         self.optimizer = optimizer
         self.lr_scheduler = lr_scheduler
         self.batch_transforms = batch_transforms
+        self.scaler = scaler
 
         # define dataloaders
         self.train_dataloader = dataloaders["train"]
+        self.batch_size = self.train_dataloader.batch_size
         if epoch_len is None:
             # epoch-based training
             self.epoch_len = len(self.train_dataloader)
@@ -136,14 +141,20 @@ class BaseTrainer:
 
         # define metrics
         self.metrics = metrics
+        # TODO: rewrite it!
+        self.loss_names_train = [self.train_reward_model.model_suffix, "loss"]
+        self.loss_names_test = [
+            reward_model.model_suffix for reward_model in self.val_reward_models
+        ]
+        self.loss_names_test.append(self.train_reward_model.model_suffix)
         self.train_metrics = MetricTracker(
-            *self.config.writer.loss_names,
+            *self.loss_names_train,
             "grad_norm",
             *[m.name for m in self.metrics["train"]],
             writer=self.writer,
         )
         self.evaluation_metrics = MetricTracker(
-            *self.config.writer.loss_names,
+            *self.loss_names_test,
             *[m.name for m in self.metrics["inference"]],
             writer=self.writer,
         )
@@ -223,7 +234,7 @@ class BaseTrainer:
                 this epoch.
         """
         self.is_train = True
-        self.latent_model.train()
+        self.model.train()
         self.train_metrics.reset()
         self.writer.set_step((epoch - 1) * self.epoch_len)
         self.writer.add_scalar("epoch", epoch)
@@ -231,10 +242,19 @@ class BaseTrainer:
             tqdm(self.train_dataloader, desc="train", total=self.epoch_len)
         ):
             try:
+                if batch_idx % self.cfg_trainer.accumulation_steps == 0:
+                    self.optimizer.zero_grad()
                 batch = self.process_batch(
                     batch,
                     metrics=self.train_metrics,
                 )
+                if (batch_idx + 1) % self.cfg_trainer.accumulation_steps == 0:
+                    self._clip_grad_norm()
+                    self.scaler.step(self.optimizer)
+                    self.scaler.update()
+                    if self.lr_scheduler is not None:
+                        self.lr_scheduler.step()
+
             except torch.cuda.OutOfMemoryError as e:
                 if self.skip_oom:
                     self.logger.warning("OOM on batch. Skipping batch.")
@@ -286,7 +306,7 @@ class BaseTrainer:
             logs (dict): logs that contain the information about evaluation.
         """
         self.is_train = False
-        self.latent_model.eval()
+        self.model.eval()
         self.evaluation_metrics.reset()
         with torch.no_grad():
             for batch_idx, batch in tqdm(
@@ -369,8 +389,8 @@ class BaseTrainer:
             batch (dict): dict-based batch containing the data from
                 the dataloader with some of the tensors on the device.
         """
-        for tensor_for_device in self.cfg_trainer.device_tensors:
-            batch[tensor_for_device] = batch[tensor_for_device].to(self.device)
+        for column_name in batch:
+            batch[column_name] = batch[column_name].to(self.device)
         return batch
 
     def transform_batch(self, batch):
@@ -405,7 +425,7 @@ class BaseTrainer:
         """
         if self.config["trainer"].get("max_grad_norm", None) is not None:
             clip_grad_norm_(
-                self.latent_model.parameters(), self.config["trainer"]["max_grad_norm"]
+                self.model.unet.parameters(), self.config["trainer"]["max_grad_norm"]
             )
 
     @torch.no_grad()
@@ -418,7 +438,7 @@ class BaseTrainer:
         Returns:
             total_norm (float): the calculated norm.
         """
-        parameters = self.latent_model.parameters()
+        parameters = self.model.unet.parameters()
         if isinstance(parameters, torch.Tensor):
             parameters = [parameters]
         parameters = [p for p in parameters if p.grad is not None]
@@ -440,7 +460,7 @@ class BaseTrainer:
         """
         base = "[{}/{} ({:.0f}%)]"
         if hasattr(self.train_dataloader, "n_samples"):
-            current = batch_idx * self.train_dataloader.batch_size
+            current = batch_idx * self.batch_size
             total = self.train_dataloader.n_samples
         else:
             current = batch_idx
@@ -487,11 +507,11 @@ class BaseTrainer:
                 'model_best.pth'(do not duplicate the checkpoint as
                 checkpoint-epochEpochNumber.pth)
         """
-        arch = type(self.latent_model).__name__
+        arch = type(self.model).__name__
         state = {
             "arch": arch,
             "epoch": epoch,
-            "state_dict": self.latent_model.state_dict(),
+            "state_dict": self.model.state_dict(),
             "optimizer": self.optimizer.state_dict(),
             "lr_scheduler": self.lr_scheduler.state_dict(),
             "monitor_best": self.mnt_best,
@@ -534,7 +554,7 @@ class BaseTrainer:
                 "Warning: Architecture configuration given in the config file is different from that "
                 "of the checkpoint. This may yield an exception when state_dict is loaded."
             )
-        self.latent_model.load_state_dict(checkpoint["state_dict"])
+        self.model.load_state_dict(checkpoint["state_dict"])
 
         # load optimizer state from checkpoint only when optimizer type is not changed.
         if (
@@ -573,6 +593,6 @@ class BaseTrainer:
         checkpoint = torch.load(pretrained_path, self.device)
 
         if checkpoint.get("state_dict") is not None:
-            self.latent_model.load_state_dict(checkpoint["state_dict"])
+            self.model.load_state_dict(checkpoint["state_dict"])
         else:
-            self.latent_model.load_state_dict(checkpoint)
+            self.model.load_state_dict(checkpoint)

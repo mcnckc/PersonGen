@@ -64,8 +64,14 @@ def get_dataloaders(config, device: torch.device, all_models_with_tokenizer: lis
     move_batch_transforms_to_device(batch_transforms, device)
 
     # dataset partitions init
-    datasets = instantiate(config.datasets)  # instance transforms are defined inside
-
+    datasets = {
+        dataset_partition: instantiate(
+            config.datasets[dataset_partition],
+            dataset_split=dataset_partition,
+            all_models_with_tokenizer=all_models_with_tokenizer,
+        )
+        for dataset_partition in config.datasets
+    }
     # dataloaders init
     dataloaders = {}
     for dataset_partition in config.datasets.keys():

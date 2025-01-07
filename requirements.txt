@@ -1,8 +1,9 @@
+accelerate
 clip
 datasets
 diffusers>=0.16.0
-torch==2.2.0
-torchvision==0.17.0
+torch
+torchvision
 torchmetrics
 transformers
 numpy==1.26.4

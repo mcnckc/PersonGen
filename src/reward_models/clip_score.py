@@ -22,21 +22,12 @@ class ClipScore(BaseModel):
         self.model = model
         self.transform = transform
         self.device = device
-        self.image_processor = transforms.Compose(
-            [
-                transforms.ToTensor(),
-                transforms.Normalize(
-                    (0.48145466, 0.4578275, 0.40821073),
-                    (0.26862954, 0.26130258, 0.27577711),
-                ),
-            ]
-        )
 
-    def tokenize(
-        self, batch: tp.Dict[str, tp.Any], caption_column: str
-    ) -> tp.Dict[str, torch.Tensor]:
-        caption = batch[caption_column]
-        processed_caption = clip.tokenize(caption)
+    def tokenize(self, caption: str) -> tp.Dict[str, torch.Tensor]:
+        processed_caption = clip.tokenize(
+            caption,
+            truncate=True,
+        )
 
         return {
             f"{DatasetColumns.tokenized_text.name}_{self.model_suffix}": processed_caption
@@ -50,9 +41,8 @@ class ClipScore(BaseModel):
         tokenized_caption = batch[
             f"{DatasetColumns.tokenized_text.name}_{self.model_suffix}"
         ]
-        processed_image = self.image_processor(image)
         candidates = self.model.encode_text(tokenized_caption)
-        images = self.model.encode_image(processed_image)
+        images = self.model.encode_image(image)
 
         images = torch.nn.functional.normalize(images)
         candidates = torch.nn.functional.normalize(candidates)

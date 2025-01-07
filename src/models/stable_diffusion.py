@@ -57,13 +57,16 @@ class StableDiffusion(torch.nn.Module):
 
         self.vae.requires_grad_(False)
         self.text_encoder.requires_grad_(False)
-        self.reward_model.requires_grad_(False)
 
-    def tokenize(
-        self, batch: tp.Dict[str, tp.Any], caption_column: str
-    ) -> dict[str, tp.Any]:
+    def train(self, mode: bool = True):
+        self.unet.train()
+
+    def eval(self, mode: bool = True):
+        self.unet.eval()
+
+    def tokenize(self, caption: str) -> dict[str, tp.Any]:
         input_ids = self.tokenizer(
-            batch[caption_column],
+            caption,
             max_length=self.tokenizer.model_max_length,
             padding="max_length",
             truncation=True,

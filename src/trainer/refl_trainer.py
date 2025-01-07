@@ -1,6 +1,7 @@
 import random
 
 import torch
+from torch.cuda.amp import autocast
 
 from src.constants.dataset import DatasetColumns
 from src.metrics.tracker import MetricTracker
@@ -12,13 +13,6 @@ class ReFLTrainer(BaseTrainer):
     Trainer class.
     Reproduce ReFL training.
     """
-
-    def __init__(
-        self, *, min_mid_timestep: int, max_mid_timestep: int, **kwargs
-    ) -> None:
-        super().__init__(**kwargs)
-        self.min_mid_timestep = min_mid_timestep
-        self.max_mid_timestep = max_mid_timestep
 
     def process_batch(self, batch: dict[str, torch.Tensor], metrics: MetricTracker):
         """
@@ -43,77 +37,88 @@ class ReFLTrainer(BaseTrainer):
         batch = self.transform_batch(batch)  # transform batch on device -- faster
 
         metric_funcs = self.metrics["inference"]
-        if self.is_train:
-            metric_funcs = self.metrics["train"]
-            self.optimizer.zero_grad()
 
-        encoder_hidden_states = self.text_encoder(
-            batch[DatasetColumns.tokenized_text.name]
-        )[0]
+        with autocast():
+            encoder_hidden_states = self.model.text_encoder(
+                batch[DatasetColumns.tokenized_text.name]
+            )[0]
 
-        latents = torch.randn(
-            (self.train_dataloader.batch_size, 4, 64, 64),
-            device=self.device,
-        )
+            latents = torch.randn(
+                (batch[DatasetColumns.tokenized_text.name].shape[0], 4, 64, 64),
+                device=self.device,
+            )
 
-        self.noise_scheduler.set_timesteps(self.max_mid_timestep, device=self.device)
-        timesteps = self.noise_scheduler.timesteps
+            self.model.noise_scheduler.set_timesteps(
+                self.cfg_trainer.max_mid_timestep, device=self.device
+            )
+            timesteps = self.model.noise_scheduler.timesteps
 
-        mid_timestep = random.randint(
-            self.min_mid_timestep,
-            self.max_mid_timestep - 1,
-        )
-
-        with torch.no_grad():
-            for i, timestep in enumerate(timesteps[:mid_timestep]):
-                latent_model_input = latents
-                latent_model_input = self.noise_scheduler.scale_model_input(
-                    latent_model_input, timestep
+            mid_timestep = (
+                random.randint(
+                    self.cfg_trainer.min_mid_timestep,
+                    self.cfg_trainer.max_mid_timestep - 1,
                 )
-                noise_pred = self.latent_model(
-                    latent_model_input,
-                    timestep,
-                    encoder_hidden_states=encoder_hidden_states,
-                ).sample
+                if self.is_train
+                else self.cfg_trainer.max_mid_timestep - 1
+            )
 
-                latents = self.noise_scheduler.step(
-                    noise_pred, timestep, latents
-                ).prev_sample
+            with torch.no_grad():
+                for i, timestep in enumerate(timesteps[:mid_timestep]):
+                    latent_model_input = latents
+                    latent_model_input = self.model.noise_scheduler.scale_model_input(
+                        latent_model_input, timestep
+                    )
+                    noise_pred = self.model.unet(
+                        latent_model_input,
+                        timestep,
+                        encoder_hidden_states=encoder_hidden_states,
+                    ).sample
 
-        latent_model_input = latents
-        latent_model_input = self.noise_scheduler.scale_model_input(
-            latent_model_input, timesteps[mid_timestep]
-        )
+                    latents = self.model.noise_scheduler.step(
+                        noise_pred, timestep, latents
+                    ).prev_sample
 
-        noise_pred = self.latent_model(
-            latent_model_input,
-            timesteps[mid_timestep],
-            encoder_hidden_states=encoder_hidden_states,
-        ).sample
+            latent_model_input = latents
+            latent_model_input = self.model.noise_scheduler.scale_model_input(
+                latent_model_input, timesteps[mid_timestep]
+            )
 
-        pred_original_sample = self.noise_scheduler.step(
-            noise_pred, timesteps[mid_timestep], latents
-        ).pred_original_sample.to(self.weight_dtype)
+            noise_pred = self.model.unet(
+                latent_model_input,
+                timesteps[mid_timestep],
+                encoder_hidden_states=encoder_hidden_states,
+            ).sample
 
-        pred_original_sample /= self.vae.config.scaling_factor
+            pred_original_sample = self.model.noise_scheduler.step(
+                noise_pred, timesteps[mid_timestep], latents
+            ).pred_original_sample
 
-        image = self.vae.decode(pred_original_sample).sample
-        batch["image"] = image
+            pred_original_sample /= self.model.vae.config.scaling_factor
 
-        self.reward_model.score_grad(
-            batch=batch,
-            image=image,
-        )
+            image = self.model.vae.decode(pred_original_sample).sample
+            image = (image / 2 + 0.5).clamp(0, 1)
+            image = self.image_processor(image)
 
-        if self.is_train:
-            batch["loss"].backward()  # sum of all losses is always called loss
-            self._clip_grad_norm()
-            self.optimizer.step()
-            if self.lr_scheduler is not None:
-                self.lr_scheduler.step()
+            batch["image"] = image
 
-        # update metrics for each loss (in case of multiple losses)
-        for loss_name in self.config.writer.loss_names:
+            if self.is_train:
+                self.train_reward_model.score_grad(
+                    batch=batch,
+                    image=image,
+                )
+                batch["loss"] = batch["loss"] * self.cfg_trainer.loss_scale
+                self.scaler.scale(batch["loss"]).backward()
+            else:
+                self.train_reward_model.score(
+                    batch=batch,
+                    image=image,
+                )
+                for reward_model in self.val_reward_models:
+                    reward_model.score(batch=batch, image=image)
+        # TODO: rewrite it!
+        for loss_name in (
+            self.loss_names_train if self.is_train else self.loss_names_test
+        ):
             metrics.update(loss_name, batch[loss_name].item())
 
         for met in metric_funcs:

@@ -14,9 +14,7 @@ class BaseModel(torch.nn.Module):
         self.reward_offset = reward_offset
 
     @abstractmethod
-    def tokenize(
-        self, batch: tp.Dict[str, tp.Any], caption_column: str
-    ) -> tp.Dict[str, torch.Tensor]:
+    def tokenize(self, caption: str) -> tp.Dict[str, torch.Tensor]:
         pass
 
     @abstractmethod
@@ -34,8 +32,8 @@ class BaseModel(torch.nn.Module):
     ) -> None:
         reward = self._get_reward(batch, image)
         loss = -(reward + self.reward_offset) * self.reward_scale_factor
-        batch["loss"] = loss
-        batch[self.model_suffix] = reward.mean().detach().item()
+        batch["loss"] = loss.mean()
+        batch[self.model_suffix] = reward.mean().detach()
 
     def score(
         self,
@@ -44,4 +42,4 @@ class BaseModel(torch.nn.Module):
     ) -> None:
         with torch.no_grad():
             reward = self._get_reward(batch, image)
-        batch[self.model_suffix] = reward.mean().detach().item()
+        batch[self.model_suffix] = reward.mean().detach()

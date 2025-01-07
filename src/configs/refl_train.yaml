@@ -1,10 +1,12 @@
 defaults:
-  - model: baseline
+  - accelerator: refl
+  - model: stable_diffusion_14
+  - reward_models: hps
   - writer: wandb
-  - metrics: example
-  - datasets: example
-  - dataloader: example
-  - transforms: example
+  - metrics: empty
+  - datasets: hps
+  - dataloader: hps
+  - transforms: empty
   - _self_
 optimizer:
   _target_: torch.optim.Adam
@@ -13,16 +15,17 @@ lr_scheduler:
   _target_: torch.optim.lr_scheduler.StepLR
   gamma: 0.9
   step_size: ${trainer.epoch_len}
-loss_function:
-  _target_: src.loss.ExampleLoss
 trainer:
-  log_step: 50
-  n_epochs: 100
-  epoch_len: 500
-  device_tensors: ["data_object", "labels"] # which tensors should be on device (ex. GPU)
+  loss_scale: 0.001
+  accumulation_steps: 3
+  min_mid_timestep: 30
+  max_mid_timestep: 40
+  log_step: 30
+  n_epochs: 20
+  epoch_len: 300
   resume_from: null # null or path to the checkpoint dir with *.pth and config.yaml
   device: auto # device name or "auto"
-  override: False # if True, will override the previous run with the same name
+  override: True # if True, will override the previous run with the same name
   monitor: "max test_MulticlassAccuracy" # "off" or "max/min metric_name", i.e. our goal is to maximize/minimize metric
   save_period: 5 # checkpoint each save_period epochs in addition to the best epoch
   early_stop: ${trainer.n_epochs} # epochs for early stopping

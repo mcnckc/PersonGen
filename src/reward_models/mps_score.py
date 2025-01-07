@@ -1,13 +1,13 @@
 import typing as tp
 
 import torch
-from transformers import AutoTokenizer, CLIPImageProcessor
+from torchvision import transforms
+from transformers import AutoModel, AutoProcessor, AutoTokenizer, CLIPImageProcessor
 
 from src.constants.dataset import DatasetColumns
 from src.reward_models.base_model import BaseModel
 
 MODEL_NAME = "laion/CLIP-ViT-H-14-laion2B-s32B-b79K"
-CHECKPOINT_PATH = "cache/MPS_overall_checkpoint.pth"
 
 CONDITION = "light, color, clarity, tone, style, ambiance, artistry, shape, face, hair, hands, limbs, structure, instance, texture, quantity, attributes, position, number, location, word, things."
 
@@ -15,11 +15,10 @@ MODEL_SUFFIX = "MPS"
 
 
 class MPS(BaseModel):
-    def __init__(self, device: torch.device):
+    def __init__(self, checkpoint_path: str, device: torch.device):
         super().__init__(
             model_suffix=MODEL_SUFFIX, reward_scale_factor=0.1, reward_offset=0
         )
-        self.image_processor = CLIPImageProcessor.from_pretrained(MODEL_NAME)
         self.tokenizer = AutoTokenizer.from_pretrained(
             MODEL_NAME, trust_remote_code=True
         )
@@ -29,19 +28,17 @@ class MPS(BaseModel):
             padding="max_length",
             truncation=True,
             return_tensors="pt",
-        ).input_ids
+        ).input_ids.to(device)
 
-        self.model = torch.load(CHECKPOINT_PATH)
+        self.model = torch.load(checkpoint_path)
         self.model.eval().to(device)
 
         # straightforward fix of original code
         self.model.model.text_model.eos_token_id = self.tokenizer.eos_token_id
 
-    def tokenize(
-        self, batch: tp.Dict[str, tp.Any], caption_column: str
-    ) -> tp.Dict[str, torch.Tensor]:
+    def tokenize(self, caption: str) -> tp.Dict[str, torch.Tensor]:
         processed_caption = self.tokenizer(
-            batch["caption_column"],
+            caption,
             max_length=self.tokenizer.model_max_length,
             padding="max_length",
             truncation=True,
@@ -77,7 +74,7 @@ class MPS(BaseModel):
         batch: tp.Dict[str, torch.Tensor],
         image: torch.Tensor,
     ) -> torch.Tensor:
-        image_inputs = self.image_processor(image, return_tensors="pt")["pixel_values"]
+        image_inputs = image
 
         text_inputs = batch[f"{DatasetColumns.tokenized_text.name}_{self.model_suffix}"]
 

@@ -54,10 +54,7 @@ class HPS(BaseModel):
 
         self.device = device
 
-    def tokenize(
-        self, batch: tp.Dict[str, tp.Any], caption_column: str
-    ) -> tp.Dict[str, torch.Tensor]:
-        caption = batch[caption_column]
+    def tokenize(self, caption: str) -> tp.Dict[str, torch.Tensor]:
         processed_caption = self.tokenizer(
             caption,
         )

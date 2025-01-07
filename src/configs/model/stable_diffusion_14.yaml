@@ -1,2 +1,2 @@
-__target__: src.models.StableDiffusion
+_target_: src.models.StableDiffusion
 pretrained_model_name: 'CompVis/stable-diffusion-v1-4'
