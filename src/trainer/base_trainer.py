@@ -6,7 +6,6 @@ from torch.nn.utils import clip_grad_norm_
 from torchvision import transforms
 from tqdm.auto import tqdm
 
-from src.constants.dataset import DatasetColumns
 from src.datasets.data_utils import inf_loop
 from src.metrics.tracker import MetricTracker
 from src.reward_models.base_model import BaseModel
@@ -24,7 +23,6 @@ class BaseTrainer:
         model: torch.nn.Module,
         train_reward_model: BaseModel,
         val_reward_models: list[BaseModel],
-        metrics,
         optimizer,
         lr_scheduler,
         scaler,
@@ -41,9 +39,6 @@ class BaseTrainer:
         Args:
             model (nn.Module): PyTorch model.
             criterion (nn.Module): loss function for model training.
-            metrics (dict): dict with the definition of metrics for training
-                (metrics[train]) and inference (metrics[inference]). Each
-                metric is an instance of src.metrics.BaseMetric.
             optimizer (Optimizer): optimizer for the model.
             lr_scheduler (LRScheduler): learning rate scheduler for the
                 optimizer.
@@ -140,22 +135,18 @@ class BaseTrainer:
         self.writer = writer
 
         # define metrics
-        self.metrics = metrics
-        # TODO: rewrite it!
-        self.loss_names_train = [self.train_reward_model.model_suffix, "loss"]
-        self.loss_names_test = [
+        self.train_loss_names = [self.train_reward_model.model_suffix, "loss"]
+        self.evaluation_loss_names = [
             reward_model.model_suffix for reward_model in self.val_reward_models
         ]
-        self.loss_names_test.append(self.train_reward_model.model_suffix)
+        self.evaluation_loss_names.append(self.train_reward_model.model_suffix)
         self.train_metrics = MetricTracker(
-            *self.loss_names_train,
+            *self.train_loss_names,
             "grad_norm",
-            *[m.name for m in self.metrics["train"]],
             writer=self.writer,
         )
         self.evaluation_metrics = MetricTracker(
-            *self.loss_names_test,
-            *[m.name for m in self.metrics["inference"]],
+            *self.evaluation_loss_names,
             writer=self.writer,
         )
 
@@ -248,6 +239,9 @@ class BaseTrainer:
                     batch,
                     metrics=self.train_metrics,
                 )
+                for loss_name in self.train_loss_names:
+                    self.train_metrics.update(loss_name, batch[loss_name].item())
+
                 if (batch_idx + 1) % self.cfg_trainer.accumulation_steps == 0:
                     self._clip_grad_norm()
                     self.scaler.step(self.optimizer)
@@ -318,6 +312,8 @@ class BaseTrainer:
                     batch,
                     metrics=self.evaluation_metrics,
                 )
+                for loss_name in self.evaluation_loss_names:
+                    self.evaluation_metrics.update(loss_name, batch[loss_name].item())
             self.writer.set_step(epoch * self.epoch_len, part)
             self._log_scalars(self.evaluation_metrics)
             self._log_batch(
@@ -467,13 +463,9 @@ class BaseTrainer:
             total = self.epoch_len
         return base.format(current, total, 100.0 * current / total)
 
-    @abstractmethod
     def _log_batch(self, batch_idx, batch, mode="train"):
         """
-        Abstract method. Should be defined in the nested Trainer Class.
-
-        Log data from batch. Calls self.writer.add_* to log data
-        to the experiment tracker.
+        Log generated images.
 
         Args:
             batch_idx (int): index of the current batch.
@@ -482,7 +474,10 @@ class BaseTrainer:
             mode (str): train or inference. Defines which logging
                 rules to apply.
         """
-        return NotImplementedError()
+        self.writer.add_image(
+            image_name=mode,
+            image=batch["image"],
+        )
 
     def _log_scalars(self, metric_tracker: MetricTracker):
         """

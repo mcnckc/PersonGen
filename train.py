@@ -17,7 +17,7 @@ warnings.filterwarnings("ignore", category=UserWarning)
 def main(config):
     """
     Main script for training. Instantiates the model, optimizer, scheduler,
-    metrics, logger, writer, and dataloaders. Runs Trainer to train and
+    logger, writer, and dataloaders. Runs Trainer to train and
     evaluate the model.
 
     Args:
@@ -64,9 +64,6 @@ def main(config):
         all_models_with_tokenizer=all_models_with_tokenizer,
     )
 
-    # get function handles of loss and metrics
-    metrics = instantiate(config.metrics)
-
     # build optimizer, learning rate scheduler
     trainable_params = filter(lambda p: p.requires_grad, model.parameters())
     optimizer = instantiate(config.optimizer, params=trainable_params)
@@ -81,7 +78,6 @@ def main(config):
         model=model,
         train_reward_model=train_reward_model,
         val_reward_models=val_reward_models,
-        metrics=metrics,
         optimizer=optimizer,
         lr_scheduler=lr_scheduler,
         scaler=scaler,

@@ -1,8 +1,7 @@
 import typing as tp
 
 import torch
-from torchvision import transforms
-from transformers import AutoModel, AutoProcessor, AutoTokenizer, CLIPImageProcessor
+from transformers import AutoTokenizer
 
 from src.constants.dataset import DatasetColumns
 from src.reward_models.base_model import BaseModel

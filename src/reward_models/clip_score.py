@@ -2,7 +2,6 @@ import typing as tp
 
 import clip
 import torch
-from torchvision import transforms
 
 from src.constants.dataset import DatasetColumns
 from src.reward_models.base_model import BaseModel
@@ -44,8 +43,8 @@ class ClipScore(BaseModel):
         candidates = self.model.encode_text(tokenized_caption)
         images = self.model.encode_image(image)
 
-        images = torch.nn.functional.normalize(images)
-        candidates = torch.nn.functional.normalize(candidates)
+        images = torch.nn.functional.normalize(images, dim=1)
+        candidates = torch.nn.functional.normalize(candidates, dim=1)
 
         reward = torch.clip(torch.sum(images * candidates, axis=1), 0, None)
         return reward

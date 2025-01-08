@@ -11,7 +11,7 @@ from src.trainer.base_trainer import BaseTrainer
 class ReFLTrainer(BaseTrainer):
     """
     Trainer class.
-    Reproduce ReFL training.
+    Reproduce DraftK training.
     """
 
     def process_batch(self, batch: dict[str, torch.Tensor], metrics: MetricTracker):
