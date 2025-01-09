@@ -6,14 +6,16 @@ from hydra.utils import instantiate
 from omegaconf import OmegaConf
 from torch.cuda.amp import GradScaler
 
+from src.constants.trainer import TRAINER_NAME_TO_CLASS
 from src.datasets.data_utils import get_dataloaders
-from src.trainer.refl_trainer import ReFLTrainer
 from src.utils.init_utils import set_random_seed, setup_saving_and_logging
 
 warnings.filterwarnings("ignore", category=UserWarning)
 
 
-@hydra.main(version_base=None, config_path="src/configs", config_name="refl_train")
+@hydra.main(
+    version_base=None, config_path="src/configs", config_name="image_refl_train"
+)
 def main(config):
     """
     Main script for training. Instantiates the model, optimizer, scheduler,
@@ -43,9 +45,7 @@ def main(config):
     # build stable diffusion models
 
     # build reward models
-    train_reward_model = instantiate(
-        config.reward_models["train_model"], device=device
-    ).to(device)
+    train_reward_model = instantiate(config.reward_models["train_model"], device=device)
     train_reward_model.requires_grad_(False)
 
     val_reward_models = []
@@ -70,11 +70,14 @@ def main(config):
     lr_scheduler = instantiate(config.lr_scheduler, optimizer=optimizer)
     scaler = GradScaler()
 
-    # epoch_len = number of iterations for iteration-based training
-    # epoch_len = None or len(dataloader) for epoch-based training
     epoch_len = config.trainer.get("epoch_len")
 
-    trainer = ReFLTrainer(
+    if config.trainer.type not in TRAINER_NAME_TO_CLASS:
+        raise ValueError(f"Trainer type must be one of {TRAINER_NAME_TO_CLASS}")
+
+    trainer_cls = TRAINER_NAME_TO_CLASS[config.trainer.type]
+
+    trainer = trainer_cls(
         model=model,
         train_reward_model=train_reward_model,
         val_reward_models=val_reward_models,

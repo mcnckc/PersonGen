@@ -2,13 +2,14 @@ from abc import abstractmethod
 
 import torch
 from numpy import inf
+from torch.cuda.amp import autocast
 from torch.nn.utils import clip_grad_norm_
-from torchvision import transforms
 from tqdm.auto import tqdm
 
 from src.datasets.data_utils import inf_loop
 from src.metrics.tracker import MetricTracker
-from src.reward_models.base_model import BaseModel
+from src.models import StableDiffusion
+from src.reward_models import BaseModel
 from src.utils.io_utils import ROOT_PATH
 
 
@@ -20,7 +21,7 @@ class BaseTrainer:
     def __init__(
         self,
         *,
-        model: torch.nn.Module,
+        model: StableDiffusion,
         train_reward_model: BaseModel,
         val_reward_models: list[BaseModel],
         optimizer,
@@ -70,20 +71,6 @@ class BaseTrainer:
         self.model = model
         self.train_reward_model = train_reward_model
         self.val_reward_models = val_reward_models
-        self.image_processor = transforms.Compose(
-            [
-                transforms.Resize(
-                    224, interpolation=transforms.InterpolationMode.BICUBIC
-                ),
-                transforms.Normalize(
-                    (0.48145466, 0.4578275, 0.40821073),
-                    (0.26862954, 0.26130258, 0.27577711),
-                ),
-            ]
-        )
-
-        # if self.frozen_latent_model is not None:
-        #     self.frozen_latent_model.requires_grad_(False)
 
         self.optimizer = optimizer
         self.lr_scheduler = lr_scheduler
@@ -183,6 +170,11 @@ class BaseTrainer:
         and saving the best checkpoint).
         """
         not_improved_count = 0
+
+        # first calculate start metrics
+        for part, dataloader in self.evaluation_dataloaders.items():
+            self._evaluation_epoch(self.start_epoch - 1, part, dataloader)
+
         for epoch in range(self.start_epoch, self.epochs + 1):
             self._last_epoch = epoch
             result = self._train_epoch(epoch)
@@ -208,10 +200,36 @@ class BaseTrainer:
                 break
 
     @abstractmethod
+    def _sample_image_train(self, batch: dict[str, torch.Tensor]) -> None:
+        pass
+
+    @abstractmethod
+    def _sample_image_eval(self, batch: dict[str, torch.Tensor]) -> None:
+        pass
+
     def process_batch(
         self, batch: dict[str, torch.Tensor], metrics: MetricTracker
     ) -> None:
-        raise NotImplementedError
+        batch = self.move_batch_to_device(batch)
+        batch = self.transform_batch(batch)
+
+        with autocast():
+            if self.is_train:
+                self._sample_image_train(batch=batch)
+                self.train_reward_model.score_grad(
+                    batch=batch,
+                )
+                batch["loss"] = batch["loss"] * self.cfg_trainer.loss_scale
+                self.scaler.scale(batch["loss"]).backward()
+            else:
+                self._sample_image_eval(batch=batch)
+                self.train_reward_model.score(
+                    batch=batch,
+                )
+                for reward_model in self.val_reward_models:
+                    reward_model.score(batch=batch)
+
+        return batch
 
     def _train_epoch(self, epoch):
         """
@@ -232,30 +250,27 @@ class BaseTrainer:
         for batch_idx, batch in enumerate(
             tqdm(self.train_dataloader, desc="train", total=self.epoch_len)
         ):
-            try:
-                if batch_idx % self.cfg_trainer.accumulation_steps == 0:
-                    self.optimizer.zero_grad()
-                batch = self.process_batch(
-                    batch,
-                    metrics=self.train_metrics,
-                )
-                for loss_name in self.train_loss_names:
-                    self.train_metrics.update(loss_name, batch[loss_name].item())
-
-                if (batch_idx + 1) % self.cfg_trainer.accumulation_steps == 0:
-                    self._clip_grad_norm()
-                    self.scaler.step(self.optimizer)
-                    self.scaler.update()
-                    if self.lr_scheduler is not None:
-                        self.lr_scheduler.step()
-
-            except torch.cuda.OutOfMemoryError as e:
-                if self.skip_oom:
-                    self.logger.warning("OOM on batch. Skipping batch.")
-                    torch.cuda.empty_cache()  # free some memory
-                    continue
-                else:
-                    raise e
+            self.optimizer.zero_grad()
+            for _ in range(self.cfg_trainer.accumulation_steps):
+                try:
+                    batch = self.process_batch(
+                        batch,
+                        metrics=self.train_metrics,
+                    )
+                    for loss_name in self.train_loss_names:
+                        self.train_metrics.update(loss_name, batch[loss_name].item())
+                except torch.cuda.OutOfMemoryError as e:
+                    if self.skip_oom:
+                        self.logger.warning("OOM on batch. Skipping batch.")
+                        torch.cuda.empty_cache()  # free some memory
+                        continue
+                    else:
+                        raise e
+            self._clip_grad_norm()
+            self.scaler.step(self.optimizer)
+            self.scaler.update()
+            if self.lr_scheduler is not None:
+                self.lr_scheduler.step()
 
             self.train_metrics.update("grad_norm", self._get_grad_norm())
 
@@ -267,9 +282,13 @@ class BaseTrainer:
                         epoch, self._progress(batch_idx), batch["loss"].item()
                     )
                 )
-                self.writer.add_scalar(
-                    "learning rate", self.lr_scheduler.get_last_lr()[0]
-                )
+                if self.lr_scheduler is not None:
+                    self.writer.add_scalar(
+                        "learning rate", self.lr_scheduler.get_last_lr()[0]
+                    )
+                else:
+                    self.writer.add_scalar("learning rate", self.config.optimizer.lr)
+
                 self._log_scalars(self.train_metrics)
                 self._log_batch(batch_idx, batch)
                 # we don't want to reset train metrics at the start of every epoch
@@ -508,7 +527,9 @@ class BaseTrainer:
             "epoch": epoch,
             "state_dict": self.model.state_dict(),
             "optimizer": self.optimizer.state_dict(),
-            "lr_scheduler": self.lr_scheduler.state_dict(),
+            "lr_scheduler": self.lr_scheduler.state_dict()
+            if self.lr_scheduler
+            else None,
             "monitor_best": self.mnt_best,
             "config": self.config,
         }
@@ -563,7 +584,8 @@ class BaseTrainer:
             )
         else:
             self.optimizer.load_state_dict(checkpoint["optimizer"])
-            self.lr_scheduler.load_state_dict(checkpoint["lr_scheduler"])
+            if self.lr_scheduler is not None:
+                self.lr_scheduler.load_state_dict(checkpoint["lr_scheduler"])
 
         self.logger.info(
             f"Checkpoint loaded. Resume training from epoch {self.start_epoch}"

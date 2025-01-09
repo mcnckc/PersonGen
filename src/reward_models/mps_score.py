@@ -29,7 +29,7 @@ class MPS(BaseModel):
             return_tensors="pt",
         ).input_ids.to(device)
 
-        self.model = torch.load(checkpoint_path)
+        self.model = torch.load(checkpoint_path, map_location=device)
         self.model.eval().to(device)
 
         # straightforward fix of original code

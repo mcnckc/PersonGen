@@ -1,6 +1,7 @@
 import logging
 
 from torch.utils.data import Dataset
+from torchvision import transforms
 
 import datasets
 from datasets import load_dataset
@@ -34,6 +35,15 @@ class DatasetWrapper(Dataset):
         self.image_column = image_column
         self.is_pair_dataset = is_pair_dataset
 
+        self.image_process = transforms.Compose(
+            [
+                transforms.Resize((512, 512)),
+                transforms.CenterCrop((512, 512)),
+                transforms.ToTensor(),
+                transforms.Normalize([0.5], [0.5]),
+            ]
+        )
+
     def __getitem__(self, ind):
         if self.is_pair_dataset and self.image_column is not None:
             pair_index = ind % 2
@@ -51,11 +61,13 @@ class DatasetWrapper(Dataset):
 
         if self.image_column is not None:
             if self.is_pair_dataset:
-                res[DatasetColumns.image.name] = data_dict[self.image_column][
-                    pair_index
-                ]
+                res[DatasetColumns.original_image.name] = self.image_process(
+                    data_dict[self.image_column][pair_index]
+                ).unsqueeze(0)
             else:
-                res[DatasetColumns.image.name] = data_dict[self.image_column]
+                res[DatasetColumns.original_image.name] = self.image_process(
+                    data_dict[self.image_column]
+                ).unsqueeze(0)
 
         return res
 

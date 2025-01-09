@@ -3,26 +3,24 @@ defaults:
   - model: stable_diffusion_15
   - reward_models: hps
   - writer: wandb
-  - datasets: hps
+  - datasets: hps_with_images
   - dataloader: refl
   - transforms: empty
   - _self_
 optimizer:
   _target_: torch.optim.Adam
   lr: 3e-4
-lr_scheduler:
-  _target_: torch.optim.lr_scheduler.StepLR
-  gamma: 0.9
-  step_size: ${trainer.epoch_len}
+lr_scheduler: null
 trainer:
-  type: 'ReFL'
+  type: 'ImageReFL'
   loss_scale: 0.001
   accumulation_steps: 4
+  start_timestep_index: 30
   min_mid_timestep: 30
   max_mid_timestep: 40
   log_step: 10
   n_epochs: 20
-  epoch_len: 100
+  epoch_len: 200
   resume_from: null # null or path to the checkpoint dir with *.pth and config.yaml
   device: auto # device name or "auto"
   override: True # if True, will override the previous run with the same name
