@@ -32,7 +32,7 @@ class BaseModel(torch.nn.Module):
         image = batch["image"]
         reward = self._get_reward(batch, image)
         loss = -(reward + self.reward_offset) * self.reward_scale_factor
-        batch["loss"] = loss.mean()
+        batch["loss"] += loss.mean()
         batch[self.model_suffix] = reward.mean().detach()
 
     def score(

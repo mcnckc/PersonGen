@@ -123,6 +123,8 @@ class BaseTrainer:
 
         # define metrics
         self.train_loss_names = [self.train_reward_model.model_suffix, "loss"]
+        if self.cfg_trainer.with_original_loss:
+            self.train_loss_names.append("mse_loss")
         self.evaluation_loss_names = [
             reward_model.model_suffix for reward_model in self.val_reward_models
         ]
@@ -172,8 +174,8 @@ class BaseTrainer:
         not_improved_count = 0
 
         # first calculate start metrics
-        for part, dataloader in self.evaluation_dataloaders.items():
-            self._evaluation_epoch(self.start_epoch - 1, part, dataloader)
+        # for part, dataloader in self.evaluation_dataloaders.items():
+        #     self._evaluation_epoch(self.start_epoch - 1, part, dataloader)
 
         for epoch in range(self.start_epoch, self.epochs + 1):
             self._last_epoch = epoch
@@ -216,6 +218,8 @@ class BaseTrainer:
         with autocast():
             if self.is_train:
                 self._sample_image_train(batch=batch)
+                if "loss" not in batch:
+                    batch["loss"] = 0
                 self.train_reward_model.score_grad(
                     batch=batch,
                 )
@@ -527,9 +531,9 @@ class BaseTrainer:
             "epoch": epoch,
             "state_dict": self.model.state_dict(),
             "optimizer": self.optimizer.state_dict(),
-            "lr_scheduler": self.lr_scheduler.state_dict()
-            if self.lr_scheduler
-            else None,
+            "lr_scheduler": (
+                self.lr_scheduler.state_dict() if self.lr_scheduler else None
+            ),
             "monitor_best": self.mnt_best,
             "config": self.config,
         }

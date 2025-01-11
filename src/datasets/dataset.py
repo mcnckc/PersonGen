@@ -13,22 +13,25 @@ logger = logging.getLogger(__name__)
 class DatasetWrapper(Dataset):
     def __init__(
         self,
-        dataset_name: str,
-        dataset_split: str,
-        is_pair_dataset: bool,
-        cache_dir: str,
         text_column: str,
         all_models_with_tokenizer: list,
+        is_pair_dataset: bool,
+        raw_dataset: Dataset | None = None,
+        dataset_name: str | None = None,
+        dataset_split: str | None = None,
+        cache_dir: str | None = None,
         image_column: str | None = None,
     ):
-        raw_dataset = load_dataset(
-            dataset_name, split=dataset_split, cache_dir=cache_dir
-        )
+        if raw_dataset is None:
+            raw_dataset = load_dataset(
+                dataset_name, split=dataset_split, cache_dir=cache_dir
+            )
         self._assert_dataset_is_valid(
             raw_dataset=raw_dataset,
             text_column=text_column,
             image_column=image_column,
         )
+
         self.raw_dataset = raw_dataset
         self.all_models_with_tokenizer = all_models_with_tokenizer
         self.text_column = text_column
@@ -62,11 +65,11 @@ class DatasetWrapper(Dataset):
         if self.image_column is not None:
             if self.is_pair_dataset:
                 res[DatasetColumns.original_image.name] = self.image_process(
-                    data_dict[self.image_column][pair_index]
+                    data_dict[self.image_column][pair_index].convert("RGB")
                 ).unsqueeze(0)
             else:
                 res[DatasetColumns.original_image.name] = self.image_process(
-                    data_dict[self.image_column]
+                    data_dict[self.image_column].convert("RGB")
                 ).unsqueeze(0)
 
         return res

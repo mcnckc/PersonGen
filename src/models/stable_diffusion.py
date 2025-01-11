@@ -96,8 +96,10 @@ class StableDiffusion(torch.nn.Module):
         self.timesteps = self.noise_scheduler.timesteps
 
     def get_noisy_latents_from_images(
-        self, images: torch.Tensor, timestep_index: int
-    ) -> torch.Tensor:
+        self,
+        images: torch.Tensor,
+        timestep_index: int,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         latents = self.vae.encode(images).latent_dist.sample()
 
         noise = torch.randn_like(latents)
@@ -107,7 +109,7 @@ class StableDiffusion(torch.nn.Module):
             timesteps=torch.ones((images.shape[0],), device=latents.device).int()
             * self.timesteps[timestep_index],
         )
-        return noisy_images
+        return noisy_images, noise
 
     def _predict_next_latents(
         self,
