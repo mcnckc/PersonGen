@@ -2,7 +2,6 @@ import random
 
 import torch
 
-from src.constants.dataset import DatasetColumns
 from src.trainer.base_trainer import BaseTrainer
 
 
@@ -29,7 +28,7 @@ class ReFLTrainer(BaseTrainer):
                 latents=None,
                 start_timestamp_index=0,
                 end_timestamp_index=mid_timestep,
-                input_ids=batch[DatasetColumns.tokenized_text.name],
+                batch=batch,
                 return_pred_original=False,
             )
 
@@ -38,6 +37,7 @@ class ReFLTrainer(BaseTrainer):
             start_timestamp_index=mid_timestep,
             end_timestamp_index=mid_timestep + 1,
             encoder_hidden_states=encoder_hidden_states,
+            batch=batch,
         )
 
     def _sample_image_train(self, batch: dict[str, torch.Tensor]):

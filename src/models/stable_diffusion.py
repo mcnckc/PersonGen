@@ -1,27 +1,17 @@
 import typing as tp
 
 import torch
-from diffusers import (
-    AutoencoderKL,
-    DDPMScheduler,
-    StableDiffusionPipeline,
-    UNet2DConditionModel,
-)
+from diffusers import AutoencoderKL, DDPMScheduler, UNet2DConditionModel
 from torchvision import transforms
 from transformers import CLIPTextModel, CLIPTokenizer
 
 from src.constants.dataset import DatasetColumns
+from src.models.base_model import BaseModel
 
 
-class StableDiffusion(torch.nn.Module):
-    def __init__(
-        self,
-        pretrained_model_name: str,
-        revision: str | None = None,
-    ) -> None:
-        super().__init__()
-        self.pretrained_model_name_or_path = pretrained_model_name
-        self.revision = revision
+class StableDiffusion(BaseModel):
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
 
         self.noise_scheduler = DDPMScheduler.from_pretrained(
             self.pretrained_model_name_or_path, subfolder="scheduler"
@@ -47,14 +37,6 @@ class StableDiffusion(torch.nn.Module):
         self.unet = UNet2DConditionModel.from_pretrained(
             self.pretrained_model_name_or_path,
             subfolder="unet",
-        )
-
-        self.pipeline = StableDiffusionPipeline.from_pretrained(
-            self.pretrained_model_name_or_path,
-            text_encoder=self.text_encoder,
-            vae=self.vae,
-            unet=self.unet,
-            revision=self.revision,
         )
 
         self.image_processor = transforms.Compose(
@@ -101,6 +83,7 @@ class StableDiffusion(torch.nn.Module):
         timestep_index: int,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         latents = self.vae.encode(images).latent_dist.sample()
+        latents = latents * self.vae.config.scaling_factor
 
         noise = torch.randn_like(latents)
         noisy_images = self.noise_scheduler.add_noise(
@@ -111,18 +94,19 @@ class StableDiffusion(torch.nn.Module):
         )
         return noisy_images, noise
 
-    def _predict_next_latents(
+    def predict_next_latents(
         self,
         latents: torch.Tensor,
         timestep_index: int,
         encoder_hidden_states: torch.Tensor,
+        batch: dict[str, torch.Tensor],
         return_pred_original: bool = False,
-    ) -> torch.Tensor:
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         timestep = self.timesteps[timestep_index]
         latent_model_input = self.noise_scheduler.scale_model_input(latents, timestep)
         noise_pred = self.unet(
             latent_model_input,
-            timestep,
+            timestep=timestep,
             encoder_hidden_states=encoder_hidden_states,
         ).sample
 
@@ -132,24 +116,26 @@ class StableDiffusion(torch.nn.Module):
             ).pred_original_sample
 
             pred_original_sample /= self.vae.config.scaling_factor
-            return pred_original_sample
+            return pred_original_sample, noise_pred
 
         latents = self.noise_scheduler.step(noise_pred, timestep, latents).prev_sample
 
-        return latents
+        return latents, noise_pred
 
     def do_k_diffusion_steps(
         self,
         start_timestamp_index: int,
         end_timestamp_index: int,
         latents: torch.Tensor | None = None,
-        input_ids: torch.Tensor | None = None,
+        batch: dict[str, torch.Tensor] | None = None,
         encoder_hidden_states: torch.Tensor | None = None,
         return_pred_original: bool = False,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         assert start_timestamp_index < end_timestamp_index
         if encoder_hidden_states is None:
-            encoder_hidden_states = self.text_encoder(input_ids)[0]
+            encoder_hidden_states = self.text_encoder(
+                batch[DatasetColumns.tokenized_text.name],
+            )[0]
         if latents is None:
             latents = torch.randn(
                 (encoder_hidden_states.shape[0], 4, 64, 64),
@@ -157,33 +143,35 @@ class StableDiffusion(torch.nn.Module):
             )
 
         for timestep_index in range(start_timestamp_index, end_timestamp_index - 1):
-            latents = self._predict_next_latents(
+            latents, _ = self.predict_next_latents(
                 latents=latents,
                 timestep_index=timestep_index,
                 encoder_hidden_states=encoder_hidden_states,
+                batch=batch,
                 return_pred_original=False,
             )
-        res = self._predict_next_latents(
+        res, _ = self.predict_next_latents(
             latents=latents,
             timestep_index=end_timestamp_index - 1,
             encoder_hidden_states=encoder_hidden_states,
+            batch=batch,
             return_pred_original=return_pred_original,
         )
         return res, encoder_hidden_states
 
     def sample_image(
         self,
-        latents: torch.Tensor,
+        latents: torch.Tensor | None,
         start_timestamp_index: int,
         end_timestamp_index: int,
-        input_ids: torch.Tensor | None = None,
+        batch: dict[str, torch.Tensor],
         encoder_hidden_states: torch.Tensor | None = None,
     ) -> torch.Tensor:
         pred_original_sample, _ = self.do_k_diffusion_steps(
             latents=latents,
             start_timestamp_index=start_timestamp_index,
             end_timestamp_index=end_timestamp_index,
-            input_ids=input_ids,
+            batch=batch,
             encoder_hidden_states=encoder_hidden_states,
             return_pred_original=True,
         )

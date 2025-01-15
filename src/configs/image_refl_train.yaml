@@ -12,6 +12,7 @@ optimizer:
   lr: 3e-4
 lr_scheduler: null
 trainer:
+  state_del: null
   type: 'ImageReFL'
   loss_scale: 0.001
   accumulation_steps: 4

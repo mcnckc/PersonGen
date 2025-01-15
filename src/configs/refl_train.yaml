@@ -8,12 +8,9 @@ defaults:
   - transforms: empty
   - _self_
 optimizer:
-  _target_: torch.optim.Adam
+  _target_: torch.optim.AdamW
   lr: 3e-4
-lr_scheduler:
-  _target_: torch.optim.lr_scheduler.StepLR
-  gamma: 0.9
-  step_size: ${trainer.epoch_len}
+lr_scheduler: null
 trainer:
   type: 'ReFL'
   loss_scale: 0.001

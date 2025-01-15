@@ -123,7 +123,7 @@ class BaseTrainer:
 
         # define metrics
         self.train_loss_names = [self.train_reward_model.model_suffix, "loss"]
-        if self.cfg_trainer.with_original_loss:
+        if self.cfg_trainer.get("with_original_loss"):
             self.train_loss_names.append("mse_loss")
         self.evaluation_loss_names = [
             reward_model.model_suffix for reward_model in self.val_reward_models
@@ -217,9 +217,8 @@ class BaseTrainer:
 
         with autocast():
             if self.is_train:
+                batch["loss"] = 0
                 self._sample_image_train(batch=batch)
-                if "loss" not in batch:
-                    batch["loss"] = 0
                 self.train_reward_model.score_grad(
                     batch=batch,
                 )
@@ -262,7 +261,10 @@ class BaseTrainer:
                         metrics=self.train_metrics,
                     )
                     for loss_name in self.train_loss_names:
-                        self.train_metrics.update(loss_name, batch[loss_name].item())
+                        if loss_name in batch:
+                            self.train_metrics.update(
+                                loss_name, batch[loss_name].item()
+                            )
                 except torch.cuda.OutOfMemoryError as e:
                     if self.skip_oom:
                         self.logger.warning("OOM on batch. Skipping batch.")
