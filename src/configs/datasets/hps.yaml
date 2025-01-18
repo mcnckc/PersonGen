@@ -3,10 +3,8 @@ train:
   dataset_name: "ymhao/HPDv2"
   cache_dir: "/home/jovyan/shares/SR006.nfs2/torchrik/refl_proj/cache"
   text_column: 'prompt'
-  is_pair_dataset: true
 test:
   _target_: src.datasets.DatasetWrapper
   dataset_name: "ymhao/HPDv2"
   cache_dir: "/home/jovyan/shares/SR006.nfs2/torchrik/refl_proj/cache"
   text_column: 'prompt'
-  is_pair_dataset: false

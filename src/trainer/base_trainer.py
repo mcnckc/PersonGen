@@ -36,27 +36,6 @@ class BaseTrainer:
         skip_oom=True,
         batch_transforms=None,
     ):
-        """
-        Args:
-            model (nn.Module): PyTorch model.
-            criterion (nn.Module): loss function for model training.
-            optimizer (Optimizer): optimizer for the model.
-            lr_scheduler (LRScheduler): learning rate scheduler for the
-                optimizer.
-            config (DictConfig): experiment config containing training config.
-            device (str): device for tensors and model.
-            dataloaders (dict[DataLoader]): dataloaders for different
-                sets of data.
-            logger (Logger): logger that logs output.
-            writer (WandBWriter | CometMLWriter): experiment tracker.
-            epoch_len (int | None): number of steps in each epoch for
-                iteration-based training. If None, use epoch-based
-                training (len(dataloader)).
-            skip_oom (bool): skip batches with the OutOfMemory error.
-            batch_transforms (dict[Callable] | None): transforms that
-                should be applied on the whole batch. Depend on the
-                tensor name.
-        """
         self.is_train = True
 
         self.config = config
@@ -122,13 +101,8 @@ class BaseTrainer:
         self.writer = writer
 
         # define metrics
-        self.train_loss_names = [self.train_reward_model.model_suffix, "loss"]
-        if self.cfg_trainer.get("with_original_loss"):
-            self.train_loss_names.append("mse_loss")
-        self.evaluation_loss_names = [
-            reward_model.model_suffix for reward_model in self.val_reward_models
-        ]
-        self.evaluation_loss_names.append(self.train_reward_model.model_suffix)
+        self.train_loss_names = self._get_train_loss_names()
+        self.evaluation_loss_names = self._get_eval_loss_names()
         self.train_metrics = MetricTracker(
             *self.train_loss_names,
             "grad_norm",
@@ -140,7 +114,6 @@ class BaseTrainer:
         )
 
         # define checkpoint dir and init everything if required
-
         self.checkpoint_dir = (
             ROOT_PATH / config.trainer.save_dir / config.writer.run_name
         )
@@ -151,6 +124,17 @@ class BaseTrainer:
 
         if config.trainer.get("from_pretrained") is not None:
             self._from_pretrained(config.trainer.get("from_pretrained"))
+
+    def _get_train_loss_names(self):
+        train_loss_names = [self.train_reward_model.model_suffix, "loss"]
+        return train_loss_names
+
+    def _get_eval_loss_names(self):
+        evaluation_loss_names = [
+            reward_model.model_suffix for reward_model in self.val_reward_models
+        ]
+        evaluation_loss_names.append(self.train_reward_model.model_suffix)
+        return evaluation_loss_names
 
     def train(self):
         """
@@ -174,8 +158,8 @@ class BaseTrainer:
         not_improved_count = 0
 
         # first calculate start metrics
-        # for part, dataloader in self.evaluation_dataloaders.items():
-        #     self._evaluation_epoch(self.start_epoch - 1, part, dataloader)
+        for part, dataloader in self.evaluation_dataloaders.items():
+            self._evaluation_epoch(self.start_epoch - 1, part, dataloader)
 
         for epoch in range(self.start_epoch, self.epochs + 1):
             self._last_epoch = epoch

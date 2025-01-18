@@ -1,13 +1,17 @@
 defaults:
-  - model: baseline
-  - metrics: example
-  - datasets: example_eval # we do not want to run inference on training data
-  - dataloader: example
-  - transforms: example
+  - model: stable_diffusion_15
+  - reward_models: inference
+  - writer: wandb
+  - datasets: inference_hps
+  - dataloader: inference_refl
+  - transforms: empty
   - _self_
 inferencer:
-  device_tensors: ["data_object", "labels"] # which tensors should be on device (ex. GPU)
-  device: auto # device name or "auto"
-  save_path: "example" # any name here, can be a dataset name
-  seed: 1
-  from_pretrained: "saved/model_best.pth" # path to the pretrained model
+  type: 'ReFL'
+  loss_scale: 0.001
+  start_timestep_indexs: [25, 28, 30, 32, 34, 35, 36, 37, 38, 39]
+  end_timestep_index: 40
+  device: auto
+  save_dir: "saved"
+  seed: 42
+  from_pretrained: "saved/refl_with_constant_scheduler/checkpoint-epoch20.pth"

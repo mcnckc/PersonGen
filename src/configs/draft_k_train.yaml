@@ -1,5 +1,4 @@
 defaults:
-  - accelerator: refl
   - model: stable_diffusion_15
   - reward_models: hps
   - writer: wandb

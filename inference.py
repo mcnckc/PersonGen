@@ -3,56 +3,45 @@ import warnings
 import hydra
 import torch
 from hydra.utils import instantiate
+from omegaconf import OmegaConf
 
 from src.datasets.data_utils import get_dataloaders
 from src.trainer import Inferencer
-from src.utils.init_utils import set_random_seed
-from src.utils.io_utils import ROOT_PATH
+from src.utils.init_utils import set_random_seed, setup_saving_and_logging
 
 warnings.filterwarnings("ignore", category=UserWarning)
 
 
 @hydra.main(version_base=None, config_path="src/configs", config_name="inference")
 def main(config):
-    """
-    Main script for inference. Instantiates the model, metrics, and
-    dataloaders. Runs Inferencer to calculate metrics and (or)
-    save predictions.
-
-    Args:
-        config (DictConfig): hydra experiment config.
-    """
     set_random_seed(config.inferencer.seed)
+    project_config = OmegaConf.to_container(config)
+    writer = instantiate(config.writer, None, project_config)
 
     if config.inferencer.device == "auto":
         device = "cuda" if torch.cuda.is_available() else "cpu"
     else:
         device = config.inferencer.device
 
-    # setup data_loader instances
-    # batch_transforms should be put on device
-    dataloaders, batch_transforms = get_dataloaders(config, device)
-
-    # build model architecture, then print to console
     model = instantiate(config.model).to(device)
-    print(model)
+    reward_models = [
+        instantiate(reward_model_cfg, device=device).to(device)
+        for reward_model_cfg in config.reward_models
+    ]
+    all_models_with_tokenizer = reward_models + [model]
 
-    # get metrics
-    metrics = instantiate(config.metrics)
-
-    # save_path for model predictions
-    save_path = ROOT_PATH / "data" / "saved" / config.inferencer.save_path
-    save_path.mkdir(exist_ok=True, parents=True)
+    dataloaders, batch_transforms = get_dataloaders(
+        config, device, all_models_with_tokenizer
+    )
 
     inferencer = Inferencer(
         model=model,
+        reward_models=reward_models,
         config=config,
         device=device,
         dataloaders=dataloaders,
         batch_transforms=batch_transforms,
-        save_path=save_path,
-        metrics=metrics,
-        skip_model_load=False,
+        writer=writer,
     )
 
     logs = inferencer.run_inference()

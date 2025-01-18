@@ -1,7 +1,10 @@
 import torch
 from tqdm.auto import tqdm
 
+from src.constants.dataset import DatasetColumns
 from src.metrics.tracker import MetricTracker
+from src.models import StableDiffusion
+from src.reward_models import BaseModel
 from src.trainer.base_trainer import BaseTrainer
 
 
@@ -16,43 +19,17 @@ class Inferencer(BaseTrainer):
 
     def __init__(
         self,
-        model,
+        model: StableDiffusion,
+        reward_models: list[BaseModel],
         config,
         device,
         dataloaders,
-        save_path,
-        metrics=None,
+        writer,
         batch_transforms=None,
-        skip_model_load=False,
     ):
-        """
-        Initialize the Inferencer.
-
-        Args:
-            model (nn.Module): PyTorch model.
-            config (DictConfig): run config containing inferencer config.
-            device (str): device for tensors and model.
-            dataloaders (dict[DataLoader]): dataloaders for different
-                sets of data.
-            save_path (str): path to save model predictions and other
-                information.
-            metrics (dict): dict with the definition of metrics for
-                inference (metrics[inference]). Each metric is an instance
-                of src.metrics.BaseMetric.
-            batch_transforms (dict[nn.Module] | None): transforms that
-                should be applied on the whole batch. Depend on the
-                tensor name.
-            skip_model_load (bool): if False, require the user to set
-                pre-trained checkpoint path. Set this argument to True if
-                the model desirable weights are defined outside of the
-                Inferencer Class.
-        """
-        assert (
-            skip_model_load or config.inferencer.get("from_pretrained") is not None
-        ), "Provide checkpoint or set skip_model_load=True"
-
         self.config = config
         self.cfg_trainer = self.config.inferencer
+        self.writer = writer
 
         self.device = device
 
@@ -62,95 +39,77 @@ class Inferencer(BaseTrainer):
         # define dataloaders
         self.evaluation_dataloaders = {k: v for k, v in dataloaders.items()}
 
-        # path definition
-
-        self.save_path = save_path
+        self.reward_models = reward_models
 
         # define metrics
-        self.metrics = metrics
-        if self.metrics is not None:
-            self.evaluation_metrics = MetricTracker(
-                *[m.name for m in self.metrics["inference"]],
-                writer=None,
-            )
-        else:
-            self.evaluation_metrics = None
+        self.loss_names = [
+            reward_model.model_suffix for reward_model in self.reward_models
+        ]
+        self.all_metrics = MetricTracker(
+            *self.loss_names,
+            *["improvement_" + model_suffix for model_suffix in self.loss_names],
+            writer=self.writer,
+        )
+        self.start_timestep_index = None
 
-        if not skip_model_load:
-            # init model
-            self._from_pretrained(config.inferencer.get("from_pretrained"))
+        self._from_pretrained(config.inferencer.get("from_pretrained"))
 
     def run_inference(self):
-        """
-        Run inference on each partition.
-
-        Returns:
-            part_logs (dict): part_logs[part_name] contains logs
-                for the part_name partition.
-        """
         part_logs = {}
-        for part, dataloader in self.evaluation_dataloaders.items():
-            logs = self._inference_part(part, dataloader)
-            part_logs[part] = logs
+
+        for start_timestep_index in self.cfg_trainer.start_timestep_indexs:
+            self.start_timestep_index = start_timestep_index
+            for part, dataloader in self.evaluation_dataloaders.items():
+                logs = self._inference_part(part, dataloader)
+                part_logs[part] = logs
+
+            self.writer.set_step(start_timestep_index)
+            for metric_name in self.all_metrics.keys():
+                self.writer.add_scalar(
+                    f"{metric_name}", self.all_metrics.avg(metric_name)
+                )
+            self.all_metrics.reset()
         return part_logs
 
-    def process_batch(self, batch_idx, batch, metrics, part):
-        """
-        Run batch through the model, compute metrics, and
-        save predictions to disk.
+    def _sample_image(self, batch: dict[str, torch.Tensor]):
+        self.model.set_timesteps(
+            self.cfg_trainer.end_timestep_index, device=self.device
+        )
 
-        Save directory is defined by save_path in the inference
-        config and current partition.
+        original_images = batch[DatasetColumns.original_image.name]
 
-        Args:
-            batch_idx (int): the index of the current batch.
-            batch (dict): dict-based batch containing the data from
-                the dataloader.
-            metrics (MetricTracker): MetricTracker object that computes
-                and aggregates the metrics. The metrics depend on the type
-                of the partition (train or inference).
-            part (str): name of the partition. Used to define proper saving
-                directory.
-        Returns:
-            batch (dict): dict-based batch containing the data from
-                the dataloader (possibly transformed via batch transform)
-                and model outputs.
-        """
+        noised_latents, _ = self.model.get_noisy_latents_from_images(
+            images=original_images,
+            timestep_index=self.start_timestep_index,
+        )
+
+        batch["image"] = self.model.sample_image(
+            latents=noised_latents,
+            start_timestep_index=self.start_timestep_index,
+            end_timestep_index=self.cfg_trainer.end_timestep_index,
+            batch=batch,
+        )
+
+    def process_batch(
+        self, batch: dict[str, torch.Tensor], metrics: MetricTracker
+    ) -> tuple[dict[str, torch.Tensor], dict[str, torch.Tensor]]:
         batch = self.move_batch_to_device(batch)
-        batch = self.transform_batch(batch)  # transform batch on device -- faster
+        batch = self.transform_batch(batch)
 
-        outputs = self.model(**batch)
-        batch.update(outputs)
+        self._sample_image(batch)
 
-        if metrics is not None:
-            for met in self.metrics["inference"]:
-                metrics.update(met.name, met(**batch))
+        original_image_batch = {
+            **batch,
+            "image": self.model.image_processor(
+                batch[DatasetColumns.original_image.name]
+            ),
+        }
 
-        # Some saving logic. This is an example
-        # Use if you need to save predictions on disk
+        for reward_model in self.reward_models:
+            reward_model.score(batch=batch)
+            reward_model.score(batch=original_image_batch)
 
-        batch_size = batch["logits"].shape[0]
-        current_id = batch_idx * batch_size
-
-        for i in range(batch_size):
-            # clone because of
-            # https://github.com/pytorch/pytorch/issues/1995
-            logits = batch["logits"][i].clone()
-            label = batch["labels"][i].clone()
-            pred_label = logits.argmax(dim=-1)
-
-            output_id = current_id + i
-
-            output = {
-                "pred_label": pred_label,
-                "label": label,
-            }
-
-            if self.save_path is not None:
-                # you can use safetensors or other lib here
-                torch.save(output, self.save_path / part / f"output_{output_id}.pth")
-
-        return batch
+        return batch, original_image_batch
 
     def _inference_part(self, part, dataloader):
         """
@@ -166,11 +125,7 @@ class Inferencer(BaseTrainer):
         self.is_train = False
         self.model.eval()
 
-        self.evaluation_metrics.reset()
-
-        # create Save dir
-        if self.save_path is not None:
-            (self.save_path / part).mkdir(exist_ok=True, parents=True)
+        self.all_metrics.reset()
 
         with torch.no_grad():
             for batch_idx, batch in tqdm(
@@ -178,11 +133,24 @@ class Inferencer(BaseTrainer):
                 desc=part,
                 total=len(dataloader),
             ):
-                batch = self.process_batch(
-                    batch_idx=batch_idx,
-                    batch=batch,
-                    part=part,
-                    metrics=self.evaluation_metrics,
+                batch, original_image_batch = self.process_batch(
+                    batch=batch, metrics=self.all_metrics
                 )
 
-        return self.evaluation_metrics.result()
+                for loss_name in self.loss_names:
+                    if loss_name in batch:
+                        self.all_metrics.update(loss_name, batch[loss_name].item())
+                        self.all_metrics.update(
+                            "improvement_" + loss_name,
+                            batch[loss_name].item()
+                            - original_image_batch[loss_name].item(),
+                        )
+        self.writer.add_image(
+            image_name="generated",
+            image=batch["image"],
+        )
+        self.writer.add_image(
+            image_name="originals",
+            image=original_image_batch["image"],
+        )
+        return self.all_metrics.result()

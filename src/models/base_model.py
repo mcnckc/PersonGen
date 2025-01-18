@@ -27,6 +27,14 @@ class BaseModel(torch.nn.Module):
         pass
 
     @abstractmethod
+    def get_noisy_latents_from_images(
+        self,
+        images: torch.Tensor,
+        timestep_index: int,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        pass
+
+    @abstractmethod
     def set_timesteps(self, max_timestep: int, device) -> None:
         pass
 
@@ -42,20 +50,12 @@ class BaseModel(torch.nn.Module):
         pass
 
     @abstractmethod
-    def get_noisy_latents_from_images(
-        self,
-        images: torch.Tensor,
-        timestep_index: int,
-    ) -> tuple[torch.Tensor, torch.Tensor]:
-        pass
-
-    @abstractmethod
     def do_k_diffusion_steps(
         self,
-        start_timestamp_index: int,
-        end_timestamp_index: int,
+        start_timestep_index: int,
+        end_timestep_index: int,
+        batch: dict[str, torch.Tensor],
         latents: torch.Tensor | None = None,
-        batch: dict[str, torch.Tensor] | None = None,
         encoder_hidden_states: torch.Tensor | None = None,
         return_pred_original: bool = False,
     ) -> tuple[torch.Tensor, torch.Tensor]:
@@ -65,8 +65,8 @@ class BaseModel(torch.nn.Module):
     def sample_image(
         self,
         latents: torch.Tensor | None,
-        start_timestamp_index: int,
-        end_timestamp_index: int,
+        start_timestep_index: int,
+        end_timestep_index: int,
         batch: dict[str, torch.Tensor],
         encoder_hidden_states: torch.Tensor | None = None,
     ) -> torch.Tensor:

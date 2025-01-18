@@ -26,16 +26,16 @@ class ReFLTrainer(BaseTrainer):
         with torch.no_grad():
             latents, encoder_hidden_states = self.model.do_k_diffusion_steps(
                 latents=None,
-                start_timestamp_index=0,
-                end_timestamp_index=mid_timestep,
+                start_timestep_index=0,
+                end_timestep_index=mid_timestep,
                 batch=batch,
                 return_pred_original=False,
             )
 
         batch["image"] = self.model.sample_image(
             latents=latents,
-            start_timestamp_index=mid_timestep,
-            end_timestamp_index=mid_timestep + 1,
+            start_timestep_index=mid_timestep,
+            end_timestep_index=mid_timestep + 1,
             encoder_hidden_states=encoder_hidden_states,
             batch=batch,
         )

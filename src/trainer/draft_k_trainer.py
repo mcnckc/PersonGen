@@ -22,17 +22,18 @@ class DraftKTrainer(BaseTrainer):
         with torch.no_grad():
             latents, encoder_hidden_states = self.model.do_k_diffusion_steps(
                 latents=None,
-                start_timestamp_index=0,
-                end_timestamp_index=no_grad_steps,
-                input_ids=batch[DatasetColumns.tokenized_text.name],
+                start_timestep_index=0,
+                batch=batch,
+                end_timestep_index=no_grad_steps,
                 return_pred_original=False,
             )
 
         batch["image"] = self.model.sample_image(
             latents=latents,
-            start_timestamp_index=no_grad_steps,
-            end_timestamp_index=grad_steps,
+            start_timestep_index=no_grad_steps,
+            end_timestep_index=grad_steps,
             encoder_hidden_states=encoder_hidden_states,
+            batch=batch,
         )
 
     def _sample_image_eval(self, batch: dict[str, torch.Tensor]):
