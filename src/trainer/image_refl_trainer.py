@@ -72,7 +72,7 @@ class ImageReFLTrainer(ReFLTrainer):
         )
 
         context_manager = (
-            torch.no_grad() if self.cfg_trainer.mse_loss_scale else nullcontext()
+            nullcontext() if self.cfg_trainer.mse_loss_scale > 0 else torch.no_grad()
         )
         with context_manager:
             _, noise_pred = self.model.predict_next_latents(
@@ -81,11 +81,11 @@ class ImageReFLTrainer(ReFLTrainer):
                 encoder_hidden_states=encoder_hidden_states,
                 batch=batch,
             )
+            mse_loss = torch.nn.functional.mse_loss(noise_pred, noise)
+            batch["mse_loss"] = mse_loss.detach()
 
-        mse_loss = torch.nn.functional.mse_loss(noise_pred, noise)
         if self.cfg_trainer.mse_loss_scale > 0:
             batch["loss"] = mse_loss * self.cfg_trainer.mse_loss_scale
-        batch["mse_loss"] = mse_loss.detach()
 
     def _get_train_loss_names(self):
         train_loss_names = super()._get_train_loss_names()
