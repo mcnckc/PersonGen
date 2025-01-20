@@ -1,7 +1,7 @@
 defaults:
   - model: pix_art_alpha
   - reward_models: inference
-  - writer: wandb
+  - writer: train
   - datasets: hps
   - dataloader: refl_pixart
   - transforms: empty
@@ -14,7 +14,7 @@ trainer:
   type: 'ReFL'
   loss_scale: 0.001
   accumulation_steps: 5
-  min_mid_timestep: 10
+  min_mid_timestep: 14
   max_mid_timestep: 15
   log_step: 10
   n_epochs: 20

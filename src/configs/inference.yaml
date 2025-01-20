@@ -1,7 +1,7 @@
 defaults:
   - model: stable_diffusion_15
   - reward_models: inference
-  - writer: wandb
+  - writer: inference
   - datasets: inference_hps
   - dataloader: inference_refl
   - transforms: empty
@@ -9,7 +9,7 @@ defaults:
 inferencer:
   type: 'ReFL'
   loss_scale: 0.001
-  start_timestep_indexs: [25, 28, 30, 32, 34, 35, 36, 37, 38, 39]
+  start_timestep_indexs: [0, 5, 10, 15, 20, 25, 28, 30, 32, 34, 35, 36, 37, 38, 39]
   end_timestep_index: 40
   device: auto
   save_dir: "saved"

@@ -1,7 +1,7 @@
 defaults:
   - model: stable_diffusion_15
   - reward_models: hps
-  - writer: wandb
+  - writer: train
   - datasets: hps_with_images
   - dataloader: refl
   - transforms: empty
