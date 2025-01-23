@@ -1,9 +1,9 @@
 defaults:
-  - model: pix_art_alpha
+  - model: stable_diffusion_15
   - reward_models: hps
   - writer: train
   - datasets: hps
-  - dataloader: refl_pixart
+  - dataloader: refl_cfg
   - transforms: empty
   - _self_
 optimizer:
@@ -14,8 +14,8 @@ trainer:
   type: 'ReFL'
   loss_scale: 0.001
   accumulation_steps: 8
-  min_mid_timestep: 10
-  max_mid_timestep: 15
+  min_mid_timestep: 30
+  max_mid_timestep: 40
   log_step: 10
   n_epochs: 20
   epoch_len: 100

@@ -199,7 +199,7 @@ class BaseTrainer:
         batch = self.move_batch_to_device(batch)
         batch = self.transform_batch(batch)
 
-        with autocast():
+        with autocast(dtype=torch.bfloat16):
             if self.is_train:
                 batch["loss"] = 0
                 self._sample_image_train(batch=batch)

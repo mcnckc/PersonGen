@@ -1,7 +1,12 @@
 import typing as tp
 
 import torch
-from diffusers import AutoencoderKL, DDPMScheduler, UNet2DConditionModel
+from diffusers import (
+    AutoencoderKL,
+    DDPMScheduler,
+    PixArtAlphaPipeline,
+    UNet2DConditionModel,
+)
 from torchvision import transforms
 from transformers import CLIPTextModel, CLIPTokenizer
 
@@ -18,6 +23,7 @@ class StableDiffusion(BaseModel):
     def __init__(
         self,
         pretrained_model_name: str,
+        torch_dtype: torch.dtype,
         revision: str | None = None,
     ) -> None:
         """
@@ -32,8 +38,12 @@ class StableDiffusion(BaseModel):
         """
         super().__init__(pretrained_model_name=pretrained_model_name, revision=revision)
 
+        self.torch_dtype = torch_dtype
+
         self.noise_scheduler = DDPMScheduler.from_pretrained(
-            self.pretrained_model_name_or_path, subfolder="scheduler"
+            self.pretrained_model_name_or_path,
+            subfolder="scheduler",
+            torch_dtype=self.torch_dtype,
         )
         self.timesteps = self.noise_scheduler.timesteps
 
@@ -41,21 +51,27 @@ class StableDiffusion(BaseModel):
             self.pretrained_model_name_or_path,
             subfolder="tokenizer",
             revision=self.revision,
+            torch_dtype=self.torch_dtype,
         )
 
         self.text_encoder = CLIPTextModel.from_pretrained(
             self.pretrained_model_name_or_path,
             subfolder="text_encoder",
             revision=self.revision,
+            torch_dtype=self.torch_dtype,
         )
 
         self.vae = AutoencoderKL.from_pretrained(
-            self.pretrained_model_name_or_path, subfolder="vae", revision=self.revision
+            self.pretrained_model_name_or_path,
+            subfolder="vae",
+            revision=self.revision,
+            torch_dtype=self.torch_dtype,
         )
 
         self.unet = UNet2DConditionModel.from_pretrained(
             self.pretrained_model_name_or_path,
             subfolder="unet",
+            torch_dtype=self.torch_dtype,
         )
 
         self.image_processor = transforms.Compose(
@@ -72,6 +88,8 @@ class StableDiffusion(BaseModel):
 
         self.vae.requires_grad_(False)
         self.text_encoder.requires_grad_(False)
+
+        self.guidance_scale = 7.5
 
     def train(self, mode: bool = True):
         """
@@ -125,7 +143,9 @@ class StableDiffusion(BaseModel):
         self.timesteps = self.noise_scheduler.timesteps
 
     def get_noisy_latents_from_images(
-        self, images: torch.Tensor, timestep_index: int
+        self,
+        images: torch.Tensor,
+        timestep_index: int,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Adds noise to the latents obtained from the input images.
@@ -151,7 +171,18 @@ class StableDiffusion(BaseModel):
         )
         return noisy_images, noise
 
-    def get_encoder_hidden_states(self, batch: dict[str, torch.Tensor]) -> torch.Tensor:
+    def _get_negative_prompts(self, batch_size: int):
+        return self.tokenizer(
+            [""] * batch_size,
+            max_length=self.tokenizer.model_max_length,
+            padding="max_length",
+            truncation=True,
+            return_tensors="pt",
+        ).input_ids
+
+    def get_encoder_hidden_states(
+        self, batch: dict[str, torch.Tensor], do_classifier_free_guidance: bool = False
+    ) -> torch.Tensor:
         """
         Retrieves the hidden states from the text encoder.
 
@@ -161,9 +192,19 @@ class StableDiffusion(BaseModel):
         Returns:
             torch.Tensor: Hidden states from the text encoder.
         """
-        return self.text_encoder(
-            batch[DatasetColumns.tokenized_text.name],
-        )[0]
+        text_input = batch[DatasetColumns.tokenized_text.name]
+
+        if do_classifier_free_guidance:
+            text_input = torch.cat(
+                [
+                    self._get_negative_prompts(text_input.shape[0]).to(
+                        text_input.device
+                    ),
+                    text_input,
+                ]
+            )
+
+        return self.text_encoder(text_input)[0]
 
     def predict_next_latents(
         self,
@@ -172,6 +213,7 @@ class StableDiffusion(BaseModel):
         encoder_hidden_states: torch.Tensor,
         batch: dict[str, torch.Tensor],
         return_pred_original: bool = False,
+        do_classifier_free_guidance: bool = False,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Predicts the next latent states during the diffusion process.
@@ -189,7 +231,8 @@ class StableDiffusion(BaseModel):
         timestep = self.timesteps[timestep_index]
 
         latent_model_input = self.noise_scheduler.scale_model_input(
-            sample=latents, timestep=timestep
+            sample=torch.cat([latents] * 2) if do_classifier_free_guidance else latents,
+            timestep=timestep,
         )
 
         noise_pred = self.unet(
@@ -197,6 +240,12 @@ class StableDiffusion(BaseModel):
             timestep=timestep,
             encoder_hidden_states=encoder_hidden_states,
         ).sample
+
+        if do_classifier_free_guidance:
+            noise_pred_uncond, noise_pred_text = noise_pred.chunk(2)
+            noise_pred = noise_pred_uncond + self.guidance_scale * (
+                noise_pred_text - noise_pred_uncond
+            )
 
         sample = self.noise_scheduler.step(
             model_output=noise_pred, timestep=timestep, sample=latents
@@ -216,6 +265,7 @@ class StableDiffusion(BaseModel):
         latents: torch.Tensor | None = None,
         encoder_hidden_states: torch.Tensor | None = None,
         return_pred_original: bool = False,
+        do_classifier_free_guidance: bool = False,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Performs multiple diffusion steps between specified timesteps.
@@ -232,14 +282,18 @@ class StableDiffusion(BaseModel):
             tuple: Resulting latents and encoder hidden states.
         """
         assert start_timestep_index <= end_timestep_index
+        batch_size = batch[DatasetColumns.tokenized_text.name].shape[0]
 
         if encoder_hidden_states is None:
-            encoder_hidden_states = self.get_encoder_hidden_states(batch)
+            encoder_hidden_states = self.get_encoder_hidden_states(
+                batch=batch, do_classifier_free_guidance=do_classifier_free_guidance
+            )
 
         if latents is None:
             latents = torch.randn(
-                (encoder_hidden_states.shape[0], 4, 64, 64),
+                (batch_size, 4, 64, 64),
                 device=encoder_hidden_states.device,
+                dtype=torch.float16,
             )
 
         for timestep_index in range(start_timestep_index, end_timestep_index - 1):
@@ -249,6 +303,7 @@ class StableDiffusion(BaseModel):
                 encoder_hidden_states=encoder_hidden_states,
                 batch=batch,
                 return_pred_original=False,
+                do_classifier_free_guidance=do_classifier_free_guidance,
             )
         res, _ = self.predict_next_latents(
             latents=latents,
@@ -256,6 +311,7 @@ class StableDiffusion(BaseModel):
             encoder_hidden_states=encoder_hidden_states,
             batch=batch,
             return_pred_original=return_pred_original,
+            do_classifier_free_guidance=do_classifier_free_guidance,
         )
         return res, encoder_hidden_states
 
@@ -266,6 +322,7 @@ class StableDiffusion(BaseModel):
         end_timestep_index: int,
         batch: dict[str, torch.Tensor],
         encoder_hidden_states: torch.Tensor | None = None,
+        do_classifier_free_guidance: bool = False,
     ) -> torch.Tensor:
         """
         Generates an image sample by decoding the latents.
@@ -287,6 +344,7 @@ class StableDiffusion(BaseModel):
             batch=batch,
             encoder_hidden_states=encoder_hidden_states,
             return_pred_original=True,
+            do_classifier_free_guidance=do_classifier_free_guidance,
         )
 
         pred_original_sample /= self.vae.config.scaling_factor

@@ -88,6 +88,7 @@ class Inferencer(BaseTrainer):
             start_timestep_index=self.start_timestep_index,
             end_timestep_index=self.cfg_trainer.end_timestep_index,
             batch=batch,
+            do_classifier_free_guidance=self.cfg_trainer.do_classifier_free_guidance,
         )
 
     def process_batch(

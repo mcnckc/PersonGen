@@ -30,6 +30,7 @@ class ReFLTrainer(BaseTrainer):
                 end_timestep_index=mid_timestep,
                 batch=batch,
                 return_pred_original=False,
+                do_classifier_free_guidance=self.cfg_trainer.do_classifier_free_guidance,
             )
 
         batch["image"] = self.model.sample_image(
@@ -38,6 +39,7 @@ class ReFLTrainer(BaseTrainer):
             end_timestep_index=mid_timestep + 1,
             encoder_hidden_states=encoder_hidden_states,
             batch=batch,
+            do_classifier_free_guidance=self.cfg_trainer.do_classifier_free_guidance,
         )
 
     def _sample_image_train(self, batch: dict[str, torch.Tensor]):
