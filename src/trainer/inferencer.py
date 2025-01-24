@@ -6,6 +6,7 @@ from src.metrics.tracker import MetricTracker
 from src.models import StableDiffusion
 from src.reward_models import BaseModel
 from src.trainer.base_trainer import BaseTrainer
+from src.utils.init_utils import set_random_seed
 
 
 class Inferencer(BaseTrainer):
@@ -26,6 +27,7 @@ class Inferencer(BaseTrainer):
         dataloaders,
         writer,
         batch_transforms=None,
+        **kwargs,
     ):
         self.config = config
         self.cfg_trainer = self.config.inferencer
@@ -90,6 +92,9 @@ class Inferencer(BaseTrainer):
             batch=batch,
             do_classifier_free_guidance=self.cfg_trainer.do_classifier_free_guidance,
         )
+        batch["original_image"] = self.model.image_processor(
+            batch[DatasetColumns.original_image.name]
+        )
 
     def process_batch(
         self, batch: dict[str, torch.Tensor], metrics: MetricTracker
@@ -101,9 +106,7 @@ class Inferencer(BaseTrainer):
 
         original_image_batch = {
             **batch,
-            "image": self.model.image_processor(
-                batch[DatasetColumns.original_image.name]
-            ),
+            "image": batch["original_image"],
         }
 
         for reward_model in self.reward_models:
@@ -127,6 +130,7 @@ class Inferencer(BaseTrainer):
         self.model.eval()
 
         self.all_metrics.reset()
+        set_random_seed(self.cfg_trainer.seed)
 
         with torch.no_grad():
             for batch_idx, batch in tqdm(
@@ -146,6 +150,7 @@ class Inferencer(BaseTrainer):
                             batch[loss_name].item()
                             - original_image_batch[loss_name].item(),
                         )
+        print(batch["image"].shape)
         self.writer.add_image(
             image_name="generated",
             image=batch["image"],

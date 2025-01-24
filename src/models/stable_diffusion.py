@@ -4,7 +4,8 @@ import torch
 from diffusers import (
     AutoencoderKL,
     DDPMScheduler,
-    PixArtAlphaPipeline,
+    DiffusionPipeline,
+    StableDiffusionPipeline,
     UNet2DConditionModel,
 )
 from torchvision import transforms
@@ -23,7 +24,6 @@ class StableDiffusion(BaseModel):
     def __init__(
         self,
         pretrained_model_name: str,
-        torch_dtype: torch.dtype,
         revision: str | None = None,
     ) -> None:
         """
@@ -38,12 +38,9 @@ class StableDiffusion(BaseModel):
         """
         super().__init__(pretrained_model_name=pretrained_model_name, revision=revision)
 
-        self.torch_dtype = torch_dtype
-
         self.noise_scheduler = DDPMScheduler.from_pretrained(
             self.pretrained_model_name_or_path,
             subfolder="scheduler",
-            torch_dtype=self.torch_dtype,
         )
         self.timesteps = self.noise_scheduler.timesteps
 
@@ -51,27 +48,23 @@ class StableDiffusion(BaseModel):
             self.pretrained_model_name_or_path,
             subfolder="tokenizer",
             revision=self.revision,
-            torch_dtype=self.torch_dtype,
         )
 
         self.text_encoder = CLIPTextModel.from_pretrained(
             self.pretrained_model_name_or_path,
             subfolder="text_encoder",
             revision=self.revision,
-            torch_dtype=self.torch_dtype,
         )
 
         self.vae = AutoencoderKL.from_pretrained(
             self.pretrained_model_name_or_path,
             subfolder="vae",
             revision=self.revision,
-            torch_dtype=self.torch_dtype,
         )
 
         self.unet = UNet2DConditionModel.from_pretrained(
             self.pretrained_model_name_or_path,
             subfolder="unet",
-            torch_dtype=self.torch_dtype,
         )
 
         self.image_processor = transforms.Compose(
@@ -214,6 +207,7 @@ class StableDiffusion(BaseModel):
         batch: dict[str, torch.Tensor],
         return_pred_original: bool = False,
         do_classifier_free_guidance: bool = False,
+        detach_main_path: bool = False,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Predicts the next latent states during the diffusion process.
@@ -243,6 +237,9 @@ class StableDiffusion(BaseModel):
 
         if do_classifier_free_guidance:
             noise_pred_uncond, noise_pred_text = noise_pred.chunk(2)
+            if detach_main_path:
+                noise_pred_text = noise_pred_text.detach()
+
             noise_pred = noise_pred_uncond + self.guidance_scale * (
                 noise_pred_text - noise_pred_uncond
             )
@@ -266,6 +263,7 @@ class StableDiffusion(BaseModel):
         encoder_hidden_states: torch.Tensor | None = None,
         return_pred_original: bool = False,
         do_classifier_free_guidance: bool = False,
+        detach_main_path: bool = False,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Performs multiple diffusion steps between specified timesteps.
@@ -293,7 +291,6 @@ class StableDiffusion(BaseModel):
             latents = torch.randn(
                 (batch_size, 4, 64, 64),
                 device=encoder_hidden_states.device,
-                dtype=torch.float16,
             )
 
         for timestep_index in range(start_timestep_index, end_timestep_index - 1):
@@ -304,6 +301,7 @@ class StableDiffusion(BaseModel):
                 batch=batch,
                 return_pred_original=False,
                 do_classifier_free_guidance=do_classifier_free_guidance,
+                detach_main_path=detach_main_path,
             )
         res, _ = self.predict_next_latents(
             latents=latents,
@@ -323,6 +321,7 @@ class StableDiffusion(BaseModel):
         batch: dict[str, torch.Tensor],
         encoder_hidden_states: torch.Tensor | None = None,
         do_classifier_free_guidance: bool = False,
+        detach_main_path: bool = False,
     ) -> torch.Tensor:
         """
         Generates an image sample by decoding the latents.
@@ -345,6 +344,7 @@ class StableDiffusion(BaseModel):
             encoder_hidden_states=encoder_hidden_states,
             return_pred_original=True,
             do_classifier_free_guidance=do_classifier_free_guidance,
+            detach_main_path=detach_main_path,
         )
 
         pred_original_sample /= self.vae.config.scaling_factor

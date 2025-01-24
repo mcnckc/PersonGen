@@ -5,8 +5,8 @@ import torch
 from hydra.utils import instantiate
 from omegaconf import OmegaConf
 
+from src.constants.trainer import INFERENCER_NAME_TO_CLASS
 from src.datasets.data_utils import get_dataloaders
-from src.trainer import Inferencer
 from src.utils.init_utils import set_random_seed, setup_saving_and_logging
 
 warnings.filterwarnings("ignore", category=UserWarning)
@@ -34,7 +34,17 @@ def main(config):
         config, device, all_models_with_tokenizer
     )
 
-    inferencer = Inferencer(
+    original_model = None
+
+    if config.inferencer.type not in INFERENCER_NAME_TO_CLASS:
+        raise ValueError(f"Inference type must be one of {INFERENCER_NAME_TO_CLASS}")
+
+    inferencer_cls = INFERENCER_NAME_TO_CLASS[config.inferencer.type]
+
+    if config.inferencer.type == "InferenceV2":
+        original_model = instantiate(config.model).to(device)
+
+    inferencer = inferencer_cls(
         model=model,
         reward_models=reward_models,
         config=config,
@@ -42,6 +52,7 @@ def main(config):
         dataloaders=dataloaders,
         batch_transforms=batch_transforms,
         writer=writer,
+        original_model=original_model,
     )
 
     logs = inferencer.run_inference()

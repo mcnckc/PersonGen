@@ -40,6 +40,7 @@ class ReFLTrainer(BaseTrainer):
             encoder_hidden_states=encoder_hidden_states,
             batch=batch,
             do_classifier_free_guidance=self.cfg_trainer.do_classifier_free_guidance,
+            detach_main_path=self.cfg_trainer.detach_main_path,
         )
 
     def _sample_image_train(self, batch: dict[str, torch.Tensor]):

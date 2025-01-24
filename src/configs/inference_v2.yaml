@@ -1,13 +1,13 @@
 defaults:
   - model: stable_diffusion_15
   - reward_models: inference
-  - writer: inference
-  - datasets: inference_hps
+  - writer: inference_v2
+  - datasets: inference_2_hps
   - dataloader: inference_refl
   - transforms: empty
   - _self_
 inferencer:
-  type: 'Inference'
+  type: 'InferenceV2'
   start_timestep_indexs: [0, 5, 10, 15, 20, 25, 28, 30, 32, 34, 35, 36, 37, 38, 39]
   end_timestep_index: 40
   device: auto
