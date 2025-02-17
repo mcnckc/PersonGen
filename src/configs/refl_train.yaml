@@ -27,3 +27,6 @@ trainer:
   early_stop: ${trainer.n_epochs} # epochs for early stopping
   save_dir: "saved"
   seed: 1
+  mse_loss_scale: 0
+  do_classifier_free_guidance: False
+  detach_main_path: False

@@ -15,3 +15,4 @@ inferencer:
   seed: 42
   from_pretrained: "saved/refl_with_constant_scheduler/checkpoint-epoch20.pth"
   do_classifier_free_guidance: False
+  save_images_path: null

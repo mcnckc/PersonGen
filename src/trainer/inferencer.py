@@ -1,3 +1,6 @@
+import typing as tp
+from pathlib import Path
+
 import torch
 from tqdm.auto import tqdm
 
@@ -7,6 +10,7 @@ from src.models import StableDiffusion
 from src.reward_models import BaseModel
 from src.trainer.base_trainer import BaseTrainer
 from src.utils.init_utils import set_random_seed
+from src.utils.io_utils import get_image_name_by_index
 
 
 class Inferencer(BaseTrainer):
@@ -49,20 +53,26 @@ class Inferencer(BaseTrainer):
         ]
         self.all_metrics = MetricTracker(
             *self.loss_names,
-            *["improvement_" + model_suffix for model_suffix in self.loss_names],
             writer=self.writer,
         )
         self.start_timestep_index = None
 
-        self._from_pretrained(config.inferencer.get("from_pretrained"))
+        self.global_image_index = 0
+        if config.inferencer.get("from_pretrained"):
+            self._from_pretrained(config.inferencer.get("from_pretrained"))
 
     def run_inference(self):
         part_logs = {}
 
         for start_timestep_index in self.cfg_trainer.start_timestep_indexs:
+            self.global_image_index = 0
+
             self.start_timestep_index = start_timestep_index
             for part, dataloader in self.evaluation_dataloaders.items():
-                logs = self._inference_part(part, dataloader)
+                logs = self._inference_part(
+                    part,
+                    dataloader,
+                )
                 part_logs[part] = logs
 
             self.writer.set_step(start_timestep_index)
@@ -85,16 +95,15 @@ class Inferencer(BaseTrainer):
             timestep_index=self.start_timestep_index,
         )
 
-        batch["image"] = self.model.sample_image(
+        reward_images, pil_images = self.model.sample_image_inference(
             latents=noised_latents,
             start_timestep_index=self.start_timestep_index,
             end_timestep_index=self.cfg_trainer.end_timestep_index,
             batch=batch,
             do_classifier_free_guidance=self.cfg_trainer.do_classifier_free_guidance,
         )
-        batch["original_image"] = self.model.image_processor(
-            batch[DatasetColumns.original_image.name]
-        )
+        batch["image"] = reward_images
+        batch["pil_images"] = pil_images
 
     def process_batch(
         self, batch: dict[str, torch.Tensor], metrics: MetricTracker
@@ -104,16 +113,20 @@ class Inferencer(BaseTrainer):
 
         self._sample_image(batch)
 
-        original_image_batch = {
-            **batch,
-            "image": batch["original_image"],
-        }
-
         for reward_model in self.reward_models:
             reward_model.score(batch=batch)
-            reward_model.score(batch=original_image_batch)
 
-        return batch, original_image_batch
+        return batch
+
+    def _save_images(self, batch: dict[str, tp.Any]) -> None:
+        images = batch["pil_images"]
+        image_path = Path(
+            self.cfg_trainer.save_images_path + f"_{self.start_timestep_index}"
+        )
+        image_path.mkdir(parents=True, exist_ok=True)
+        for i, image in enumerate(images):
+            image.save(image_path / get_image_name_by_index(self.global_image_index))
+            self.global_image_index += 1
 
     def _inference_part(self, part, dataloader):
         """
@@ -133,30 +146,21 @@ class Inferencer(BaseTrainer):
         set_random_seed(self.cfg_trainer.seed)
 
         with torch.no_grad():
-            for batch_idx, batch in tqdm(
-                enumerate(dataloader),
+            for batch in tqdm(
+                dataloader,
                 desc=part,
                 total=len(dataloader),
             ):
-                batch, original_image_batch = self.process_batch(
-                    batch=batch, metrics=self.all_metrics
-                )
+                batch = self.process_batch(batch=batch, metrics=self.all_metrics)
 
                 for loss_name in self.loss_names:
                     if loss_name in batch:
                         self.all_metrics.update(loss_name, batch[loss_name].item())
-                        self.all_metrics.update(
-                            "improvement_" + loss_name,
-                            batch[loss_name].item()
-                            - original_image_batch[loss_name].item(),
-                        )
-        print(batch["image"].shape)
+                if self.cfg_trainer.save_images_path:
+                    self._save_images(batch)
+
         self.writer.add_image(
             image_name="generated",
             image=batch["image"],
-        )
-        self.writer.add_image(
-            image_name="originals",
-            image=original_image_batch["image"],
         )
         return self.all_metrics.result()

@@ -7,7 +7,7 @@ from omegaconf import OmegaConf
 
 from src.constants.trainer import INFERENCER_NAME_TO_CLASS
 from src.datasets.data_utils import get_dataloaders
-from src.utils.init_utils import set_random_seed, setup_saving_and_logging
+from src.utils.init_utils import set_random_seed
 
 warnings.filterwarnings("ignore", category=UserWarning)
 

@@ -1,13 +1,9 @@
 import typing as tp
 
 import torch
-from diffusers import (
-    AutoencoderKL,
-    DDPMScheduler,
-    DiffusionPipeline,
-    StableDiffusionPipeline,
-    UNet2DConditionModel,
-)
+from diffusers import AutoencoderKL, DDPMScheduler, UNet2DConditionModel
+from diffusers.image_processor import VaeImageProcessor
+from PIL import Image
 from torchvision import transforms
 from transformers import CLIPTextModel, CLIPTokenizer
 
@@ -77,6 +73,12 @@ class StableDiffusion(BaseModel):
                     (0.26862954, 0.26130258, 0.27577711),
                 ),
             ]
+        )
+
+        self.vae_scale_factor = 2 ** (len(self.vae.config.block_out_channels) - 1)
+
+        self.inference_image_processor = VaeImageProcessor(
+            vae_scale_factor=self.vae_scale_factor
         )
 
         self.vae.requires_grad_(False)
@@ -313,6 +315,17 @@ class StableDiffusion(BaseModel):
         )
         return res, encoder_hidden_states
 
+    def get_pil_image(self, raw_images: torch.Tensor) -> list[Image]:
+        do_denormalize = [True] * raw_images.shape[0]
+        images = self.inference_image_processor.postprocess(
+            raw_images, output_type="pil", do_denormalize=do_denormalize
+        )
+        return images
+
+    def get_reward_image(self, raw_images: torch.Tensor) -> torch.Tensor:
+        reward_images = (raw_images / 2 + 0.5).clamp(0, 1)
+        return self.image_processor(reward_images)
+
     def sample_image(
         self,
         latents: torch.Tensor | None,
@@ -349,6 +362,44 @@ class StableDiffusion(BaseModel):
 
         pred_original_sample /= self.vae.config.scaling_factor
 
-        image = self.vae.decode(pred_original_sample).sample
-        image = (image / 2 + 0.5).clamp(0, 1)
-        return self.image_processor(image)
+        raw_image = self.vae.decode(pred_original_sample).sample
+        return self.get_reward_image(raw_image)
+
+    def sample_image_inference(
+        self,
+        latents: torch.Tensor | None,
+        start_timestep_index: int,
+        end_timestep_index: int,
+        batch: dict[str, torch.Tensor],
+        encoder_hidden_states: torch.Tensor | None = None,
+        do_classifier_free_guidance: bool = False,
+        detach_main_path: bool = False,
+    ) -> tuple[torch.Tensor, list[Image]]:
+        """
+        Generates an image sample by decoding the latents.
+
+        Args:
+            latents (torch.Tensor | None): Initial latents (optional).
+            start_timestep_index (int): Starting timestep index.
+            end_timestep_index (int): Ending timestep index.
+            batch (dict): Input batch containing data.
+            encoder_hidden_states (torch.Tensor | None): Encoder hidden states (optional).
+
+        Returns:
+            torch.Tensor: Decoded image sample.
+        """
+        pred_original_sample, _ = self.do_k_diffusion_steps(
+            latents=latents,
+            start_timestep_index=start_timestep_index,
+            end_timestep_index=end_timestep_index,
+            batch=batch,
+            encoder_hidden_states=encoder_hidden_states,
+            return_pred_original=True,
+            do_classifier_free_guidance=do_classifier_free_guidance,
+            detach_main_path=detach_main_path,
+        )
+
+        pred_original_sample /= self.vae.config.scaling_factor
+
+        raw_image = self.vae.decode(pred_original_sample).sample
+        return self.get_reward_image(raw_image), self.get_pil_image(raw_image)

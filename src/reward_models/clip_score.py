@@ -17,7 +17,7 @@ class ClipScore(BaseModel):
             model_suffix=MODEL_SUFFIX, reward_scale_factor=1, reward_offset=0
         )
 
-        model, transform = clip.load("ViT-B/32", device=device, jit=False)
+        model, transform = clip.load(MODEL_NAME, device=device, jit=False)
         self.model = model
         self.transform = transform
         self.device = device

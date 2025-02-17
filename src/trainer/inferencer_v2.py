@@ -51,8 +51,9 @@ class InferencerV2(Inferencer):
             writer=self.writer,
         )
         self.start_timestep_index = None
-
-        self._from_pretrained(config.inferencer.get("from_pretrained"))
+        self.global_image_index = 0
+        if config.inferencer.get("from_pretrained"):
+            self._from_pretrained(config.inferencer.get("from_pretrained"))
 
     def _sample_image(self, batch: dict[str, torch.Tensor]):
         self.model.set_timesteps(
@@ -70,18 +71,12 @@ class InferencerV2(Inferencer):
             do_classifier_free_guidance=True,
         )
 
-        batch["image"] = self.model.sample_image(
+        reward_images, pil_images = self.model.sample_image_inference(
             latents=latents,
             start_timestep_index=self.start_timestep_index,
             end_timestep_index=self.cfg_trainer.end_timestep_index,
             batch=batch,
             do_classifier_free_guidance=self.cfg_trainer.do_classifier_free_guidance,
         )
-
-        batch["original_image"] = self.original_model.sample_image(
-            latents=latents,
-            start_timestep_index=self.start_timestep_index,
-            end_timestep_index=self.cfg_trainer.end_timestep_index,
-            batch=batch,
-            do_classifier_free_guidance=True,
-        )
+        batch["image"] = reward_images
+        batch["pil_images"] = pil_images

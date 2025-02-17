@@ -158,8 +158,8 @@ class BaseTrainer:
         not_improved_count = 0
 
         # first calculate start metrics
-        for part, dataloader in self.evaluation_dataloaders.items():
-            self._evaluation_epoch(self.start_epoch - 1, part, dataloader)
+        # for part, dataloader in self.evaluation_dataloaders.items():
+        #     self._evaluation_epoch(self.start_epoch - 1, part, dataloader)
 
         for epoch in range(self.start_epoch, self.epochs + 1):
             self._last_epoch = epoch
@@ -395,7 +395,8 @@ class BaseTrainer:
                 the dataloader with some of the tensors on the device.
         """
         for column_name in batch:
-            batch[column_name] = batch[column_name].to(self.device)
+            if isinstance(batch[column_name], torch.Tensor):
+                batch[column_name] = batch[column_name].to(self.device)
         return batch
 
     def transform_batch(self, batch):

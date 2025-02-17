@@ -30,3 +30,7 @@ def write_json(content, fname):
     fname = Path(fname)
     with fname.open("wt") as handle:
         json.dump(content, handle, indent=4, sort_keys=False)
+
+
+def get_image_name_by_index(index: int) -> str:
+    return f"{index:05}.jpg"

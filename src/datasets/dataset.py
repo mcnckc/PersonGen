@@ -1,11 +1,15 @@
 import logging
 import typing as tp
+from pathlib import Path
 
+import torch
+from PIL import Image
 from torch.utils.data import Dataset
 from torchvision import transforms
 
 import datasets
 from src.constants.dataset import DatasetColumns
+from src.utils.io_utils import get_image_name_by_index
 
 logger = logging.getLogger(__name__)
 
@@ -21,12 +25,15 @@ class DatasetWrapper(Dataset):
         text_column: str,
         all_models_with_tokenizer: list,
         image_column: str | None = None,
+        images_path: str | None = None,
+        local_image_offset: int = 0,
         images_per_row: int | None = None,
         dataset_name: str | None = None,
         dataset_split: str | None = None,
         cache_dir: str | None = None,
         raw_dataset: Dataset | None = None,
         fixed_length: int | None = None,
+        duplicate_count: int | None = None,
     ):
         """
         Initializes the DatasetWrapper.
@@ -62,8 +69,11 @@ class DatasetWrapper(Dataset):
         self.all_models_with_tokenizer = all_models_with_tokenizer
         self.text_column = text_column
         self.image_column = image_column
+        self.images_path = Path(images_path) if images_path is not None else None
+        self.local_image_offset = local_image_offset
         self.images_per_row = images_per_row
         self.fixed_length = fixed_length
+        self.duplicate_count = duplicate_count
 
         self.image_process = transforms.Compose(
             [
@@ -73,6 +83,34 @@ class DatasetWrapper(Dataset):
                 transforms.Normalize([0.5], [0.5]),
             ]
         )
+
+    def _get_caption(self, ind: int):
+        data_dict = self.raw_dataset[ind]
+        caption = (
+            data_dict[self.text_column][0]
+            if isinstance(data_dict[self.text_column], list)
+            else data_dict[self.text_column]
+        )
+        return caption
+
+    def _get_image(self, ind: int, image_index: int | None) -> torch.Tensor:
+        if self.images_path:
+            return self.image_process(
+                Image.open(
+                    self.images_path
+                    / get_image_name_by_index(ind + self.local_image_offset)
+                )
+            ).unsqueeze(0)
+
+        data_dict = self.raw_dataset[ind]
+        if image_index is not None:
+            return self.image_process(
+                data_dict[self.image_column][image_index].convert("RGB")
+            ).unsqueeze(0)
+        else:
+            return self.image_process(
+                data_dict[self.image_column].convert("RGB")
+            ).unsqueeze(0)
 
     def __getitem__(self, ind) -> dict[str, tp.Any]:
         """
@@ -84,29 +122,23 @@ class DatasetWrapper(Dataset):
         Returns:
             dict: A dictionary containing tokenized text and optionally processed image data.
         """
+        if self.duplicate_count is not None:
+            ind //= self.duplicate_count
+
+        image_index = None
         if self.image_column is not None and self.images_per_row is not None:
             image_index = ind % self.images_per_row
             ind //= self.images_per_row
 
-        data_dict = self.raw_dataset[ind]
-        res = {}
-
+        caption = self._get_caption(ind)
+        res = {"caption": caption}
         for model in self.all_models_with_tokenizer:
-            res.update(
-                model.tokenize(
-                    data_dict[self.text_column],
-                )
-            )
+            res.update(model.tokenize(self._get_caption(ind)))
 
-        if self.image_column is not None:
-            if self.images_per_row is not None:
-                res[DatasetColumns.original_image.name] = self.image_process(
-                    data_dict[self.image_column][image_index].convert("RGB")
-                ).unsqueeze(0)
-            else:
-                res[DatasetColumns.original_image.name] = self.image_process(
-                    data_dict[self.image_column].convert("RGB")
-                ).unsqueeze(0)
+        if self.image_column is not None or self.images_path is not None:
+            res[DatasetColumns.original_image.name] = self._get_image(
+                ind=ind, image_index=image_index
+            )
 
         return res
 
@@ -122,7 +154,9 @@ class DatasetWrapper(Dataset):
 
         length = len(self.raw_dataset)
         if self.images_per_row is not None:
-            return length * self.images_per_row
+            length *= self.images_per_row
+        if self.duplicate_count is not None:
+            length *= self.duplicate_count
         return length
 
     @staticmethod
@@ -149,7 +183,15 @@ class DatasetWrapper(Dataset):
             text_column in raw_dataset.column_names,
             "text_column must be present in raw_dataset",
         )
-        assert isinstance(first_row[text_column], str)
+
+        assert (
+            isinstance(first_row[text_column], str)
+            or (
+                isinstance(first_row[text_column], list)
+                and isinstance(first_row[text_column][0], str)
+            ),
+            "text column must contain str or list[str]",
+        )
 
         assert (
             image_column is None or image_column in raw_dataset.column_names,

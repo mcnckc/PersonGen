@@ -1,17 +1,18 @@
 defaults:
   - model: stable_diffusion_15
-  - reward_models: inference
+  - reward_models: all_rewards
   - writer: inference_v2
-  - datasets: inference_2_hps
+  - datasets: hps_lpips
   - dataloader: inference_refl
   - transforms: empty
   - _self_
 inferencer:
   type: 'InferenceV2'
-  start_timestep_indexs: [0, 5, 10, 15, 20, 25, 28, 30, 32, 34, 35, 36, 37, 38, 39]
+  start_timestep_indexs: [0, 20, 25, 32, 35, 38]
   end_timestep_index: 40
   device: auto
   save_dir: "saved"
   seed: 42
-  from_pretrained: "saved/refl_with_constant_scheduler/checkpoint-epoch20.pth"
+  from_pretrained: "saved/refl_coco/checkpoint-epoch20.pth"
   do_classifier_free_guidance: False
+  save_images_path: 'images_coco/refl_coco'

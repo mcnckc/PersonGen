@@ -13,9 +13,7 @@ from src.utils.init_utils import set_random_seed, setup_saving_and_logging
 warnings.filterwarnings("ignore", category=UserWarning)
 
 
-@hydra.main(
-    version_base=None, config_path="src/configs", config_name="image_refl_train"
-)
+@hydra.main(version_base=None, config_path="src/configs", config_name="refl_train")
 def main(config):
     """
     Main script for training. Instantiates the model, optimizer, scheduler,
@@ -35,11 +33,6 @@ def main(config):
         device = "cuda" if torch.cuda.is_available() else "cpu"
     else:
         device = config.trainer.device
-
-    # accelerator = instantiate(config.accelerator)
-    # weight_dtype = torch.float16 if accelerator.mixed_precision == "fp16" else torch.float32
-
-    # device = accelerator.device
 
     model = instantiate(config.model).to(device)
     # build stable diffusion models

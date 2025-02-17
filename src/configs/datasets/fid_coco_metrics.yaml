@@ -1,0 +1,15 @@
+test:
+  _target_: src.datasets.DatasetWrapper
+  dataset_name: "patomp/thai-mscoco-2014-captions"
+  cache_dir: "/home/jovyan/shares/SR006.nfs2/torchrik/refl_proj/cache"
+  text_column: 'sentences_raw'
+  images_path: '/home/jovyan/shares/SR006.nfs2/torchrik/refl_proj/HumanDiffusion/images_coco/fid_originals_0/'
+  fixed_length: 5000
+validation:
+  _target_: src.datasets.DatasetWrapper
+  dataset_name: "patomp/thai-mscoco-2014-captions"
+  cache_dir: "/home/jovyan/shares/SR006.nfs2/torchrik/refl_proj/cache"
+  text_column: 'sentences_raw'
+  images_path: '/home/jovyan/shares/SR006.nfs2/torchrik/refl_proj/HumanDiffusion/images_coco/fid_originals_0'
+  fixed_length: 5000
+  local_image_offset: 5000

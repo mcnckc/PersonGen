@@ -1,0 +1,7 @@
+defaults:
+  - reward_models: all_rewards
+  - datasets: hps_lpips
+  - dataloader: metric_calculation
+  - transforms: empty
+  - _self_
+device: 'cuda:0'

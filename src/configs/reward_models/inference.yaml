@@ -1,5 +1,0 @@
-- _target_: src.reward_models.ClipScore
-- _target_: src.reward_models.HPS
-- _target_: src.reward_models.MPS
-  checkpoint_path: /home/jovyan/shares/SR006.nfs2/torchrik/refl_proj/cache/MPS_overall_checkpoint.pth
-- _target_: src.reward_models.PickScore
