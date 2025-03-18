@@ -201,6 +201,54 @@ class StableDiffusion(BaseModel):
 
         return self.text_encoder(text_input)[0]
 
+    def get_noise_prediction(
+            self,
+            latents: torch.Tensor,
+            timestep_index: int,
+            encoder_hidden_states: torch.Tensor,
+            do_classifier_free_guidance: bool = False,
+            detach_main_path: bool = False,
+    ):
+        timestep = self.timesteps[timestep_index]
+
+        latent_model_input = self.noise_scheduler.scale_model_input(
+            sample=torch.cat([latents] * 2) if do_classifier_free_guidance else latents,
+            timestep=timestep,
+        )
+
+        noise_pred = self.unet(
+            latent_model_input,
+            timestep=timestep,
+            encoder_hidden_states=encoder_hidden_states,
+        ).sample
+
+        if do_classifier_free_guidance:
+            noise_pred_uncond, noise_pred_text = noise_pred.chunk(2)
+            if detach_main_path:
+                noise_pred_text = noise_pred_text.detach()
+
+            noise_pred = noise_pred_uncond + self.guidance_scale * (
+                    noise_pred_text - noise_pred_uncond
+            )
+        return noise_pred
+
+    def sample_next_latents(
+            self,
+            latents: torch.Tensor,
+            timestep_index: int,
+            noise_pred: torch.Tensor,
+            return_pred_original: bool = False
+    ) -> torch.Tensor:
+        timestep = self.timesteps[timestep_index]
+        sample = self.noise_scheduler.step(
+            model_output=noise_pred,
+            timestep=timestep,
+            sample=latents
+        )
+        return (
+            sample.pred_original_sample if return_pred_original else sample.prev_sample
+        )
+
     def predict_next_latents(
         self,
         latents: torch.Tensor,
@@ -224,34 +272,21 @@ class StableDiffusion(BaseModel):
         Returns:
             tuple: Next latents and predicted noise tensor.
         """
-        timestep = self.timesteps[timestep_index]
 
-        latent_model_input = self.noise_scheduler.scale_model_input(
-            sample=torch.cat([latents] * 2) if do_classifier_free_guidance else latents,
-            timestep=timestep,
-        )
 
-        noise_pred = self.unet(
-            latent_model_input,
-            timestep=timestep,
+        noise_pred = self.get_noise_prediction(
+            latents=latents,
+            timestep_index=timestep_index,
             encoder_hidden_states=encoder_hidden_states,
-        ).sample
-
-        if do_classifier_free_guidance:
-            noise_pred_uncond, noise_pred_text = noise_pred.chunk(2)
-            if detach_main_path:
-                noise_pred_text = noise_pred_text.detach()
-
-            noise_pred = noise_pred_uncond + self.guidance_scale * (
-                noise_pred_text - noise_pred_uncond
-            )
-
-        sample = self.noise_scheduler.step(
-            model_output=noise_pred, timestep=timestep, sample=latents
+            do_classifier_free_guidance=do_classifier_free_guidance,
+            detach_main_path=detach_main_path
         )
 
-        latents = (
-            sample.pred_original_sample if return_pred_original else sample.prev_sample
+        latents = self.sample_next_latents(
+            latents=latents,
+            noise_pred=noise_pred,
+            timestep_index=timestep_index,
+            return_pred_original=return_pred_original,
         )
 
         return latents, noise_pred

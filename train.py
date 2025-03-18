@@ -38,7 +38,7 @@ def main(config):
     # build stable diffusion models
 
     # build reward models
-    train_reward_model = instantiate(config.reward_models["train_model"], device=device)
+    train_reward_model = instantiate(config.reward_models["train_model"], device=device).to(device)
     train_reward_model.requires_grad_(False)
 
     val_reward_models = []

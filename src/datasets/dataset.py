@@ -103,6 +103,8 @@ class DatasetWrapper(Dataset):
             ).unsqueeze(0)
 
         data_dict = self.raw_dataset[ind]
+        if isinstance(data_dict[self.image_column], list):
+            image_index = image_index or 0
         if image_index is not None:
             return self.image_process(
                 data_dict[self.image_column][image_index].convert("RGB")
@@ -179,22 +181,19 @@ class DatasetWrapper(Dataset):
         """
         first_row = raw_dataset[0]
 
-        assert (
-            text_column in raw_dataset.column_names,
-            "text_column must be present in raw_dataset",
-        )
+        assert text_column in raw_dataset.column_names,\
+            "text_column must be present in raw_dataset"
+
 
         assert (
             isinstance(first_row[text_column], str)
             or (
                 isinstance(first_row[text_column], list)
                 and isinstance(first_row[text_column][0], str)
-            ),
-            "text column must contain str or list[str]",
-        )
+                )
+            ), "text column must contain str or list[str]"
 
-        assert (
-            image_column is None or image_column in raw_dataset.column_names,
-            "image_column must be present in raw_dataset",
-        )
+
+        assert  image_column is None or image_column in raw_dataset.column_names, \
+                "image_column must be present in raw_dataset"
         # TODO: add image validation

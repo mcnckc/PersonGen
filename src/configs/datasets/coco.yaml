@@ -9,3 +9,4 @@ test:
   dataset_name: "ymhao/HPDv2"
   cache_dir: "/home/jovyan/shares/SR006.nfs2/torchrik/refl_proj/cache"
   text_column: 'prompt'
+  image_column: 'image'

@@ -12,7 +12,7 @@ from src.utils.init_utils import set_random_seed
 warnings.filterwarnings("ignore", category=UserWarning)
 
 
-@hydra.main(version_base=None, config_path="src/configs", config_name="inference")
+@hydra.main(version_base=None, config_path="src/configs", config_name="inference_v2")
 def main(config):
     set_random_seed(config.inferencer.seed)
     project_config = OmegaConf.to_container(config)
@@ -41,7 +41,7 @@ def main(config):
 
     inferencer_cls = INFERENCER_NAME_TO_CLASS[config.inferencer.type]
 
-    if config.inferencer.type == "InferenceV2":
+    if config.inferencer.type in ("InferenceV2", "InferenceV3"):
         original_model = instantiate(config.model).to(device)
 
     inferencer = inferencer_cls(

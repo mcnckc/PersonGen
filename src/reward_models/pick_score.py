@@ -20,7 +20,7 @@ class PickScore(BaseModel):
         )
 
         self.processor = AutoProcessor.from_pretrained(PROCESSOR_NAME)
-        self.model = AutoModel.from_pretrained(PRETRAINED_MODEL_NAME).eval()
+        self.model = AutoModel.from_pretrained(PRETRAINED_MODEL_NAME)
 
         self.device = device
 
@@ -43,9 +43,7 @@ class PickScore(BaseModel):
         batch: tp.Dict[str, torch.Tensor],
         image: torch.Tensor,
     ) -> torch.Tensor:
-        image_inputs = {"pixel_values": image}
-
-        image_embs = self.model.get_image_features(**image_inputs)
+        image_embs = self.model.get_image_features(pixel_values=image)
         image_embs = image_embs / torch.norm(image_embs, dim=-1, keepdim=True)
 
         text_embs = self.model.get_text_features(

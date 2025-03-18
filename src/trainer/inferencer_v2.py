@@ -47,7 +47,6 @@ class InferencerV2(Inferencer):
         ]
         self.all_metrics = MetricTracker(
             *self.loss_names,
-            *["improvement_" + model_suffix for model_suffix in self.loss_names],
             writer=self.writer,
         )
         self.start_timestep_index = None

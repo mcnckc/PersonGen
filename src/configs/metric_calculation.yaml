@@ -1,6 +1,6 @@
 defaults:
   - reward_models: all_rewards
-  - datasets: hps_lpips
+  - datasets: fid_coco
   - dataloader: metric_calculation
   - transforms: empty
   - _self_

@@ -199,16 +199,17 @@ class BaseTrainer:
         batch = self.move_batch_to_device(batch)
         batch = self.transform_batch(batch)
 
-        with autocast(dtype=torch.bfloat16):
-            if self.is_train:
+        if self.is_train:
+            with autocast(dtype=torch.bfloat16):
                 batch["loss"] = 0
                 self._sample_image_train(batch=batch)
                 self.train_reward_model.score_grad(
                     batch=batch,
                 )
                 batch["loss"] = batch["loss"] * self.cfg_trainer.loss_scale
-                self.scaler.scale(batch["loss"]).backward()
-            else:
+            self.scaler.scale(batch["loss"]).backward()
+        else:
+            with autocast(dtype=torch.bfloat16):
                 self._sample_image_eval(batch=batch)
                 self.train_reward_model.score(
                     batch=batch,
@@ -234,60 +235,67 @@ class BaseTrainer:
         self.train_metrics.reset()
         self.writer.set_step((epoch - 1) * self.epoch_len)
         self.writer.add_scalar("epoch", epoch)
-        for batch_idx, batch in enumerate(
-            tqdm(self.train_dataloader, desc="train", total=self.epoch_len)
+        accumulation_step = 0
+        batch_idx = 0
+        self.optimizer.zero_grad()
+        for batch in tqdm(
+                self.train_dataloader,
+                desc="train",
+                total=self.epoch_len * self.cfg_trainer.accumulation_steps
         ):
-            self.optimizer.zero_grad()
-            for _ in range(self.cfg_trainer.accumulation_steps):
-                try:
-                    batch = self.process_batch(
-                        batch,
-                        metrics=self.train_metrics,
-                    )
-                    for loss_name in self.train_loss_names:
-                        if loss_name in batch:
-                            self.train_metrics.update(
-                                loss_name, batch[loss_name].item()
-                            )
-                except torch.cuda.OutOfMemoryError as e:
-                    if self.skip_oom:
-                        self.logger.warning("OOM on batch. Skipping batch.")
-                        torch.cuda.empty_cache()  # free some memory
-                        continue
-                    else:
-                        raise e
-            self._clip_grad_norm()
-            self.scaler.step(self.optimizer)
-            self.scaler.update()
-            if self.lr_scheduler is not None:
-                self.lr_scheduler.step()
-
-            self.train_metrics.update("grad_norm", self._get_grad_norm())
-
-            # log current results
-            if batch_idx % self.log_step == 0:
-                self.writer.set_step((epoch - 1) * self.epoch_len + batch_idx)
-                self.logger.debug(
-                    "Train Epoch: {} {} Loss: {:.6f}".format(
-                        epoch, self._progress(batch_idx), batch["loss"].item()
-                    )
+            try:
+                batch = self.process_batch(
+                    batch,
+                    metrics=self.train_metrics,
                 )
-                if self.lr_scheduler is not None:
-                    self.writer.add_scalar(
-                        "learning rate", self.lr_scheduler.get_last_lr()[0]
-                    )
+                for loss_name in self.train_loss_names:
+                    if loss_name in batch:
+                        self.train_metrics.update(
+                            loss_name, batch[loss_name].item()
+                        )
+            except torch.cuda.OutOfMemoryError as e:
+                if self.skip_oom:
+                    self.logger.warning("OOM on batch. Skipping batch.")
+                    torch.cuda.empty_cache()  # free some memory
+                    continue
                 else:
-                    self.writer.add_scalar("learning rate", self.config.optimizer.lr)
+                    raise e
+            accumulation_step += 1
+            if accumulation_step % self.cfg_trainer.accumulation_steps == 0:
+                self._clip_grad_norm()
+                self.scaler.step(self.optimizer)
+                self.scaler.update()
+                if self.lr_scheduler is not None:
+                    self.lr_scheduler.step()
 
-                self._log_scalars(self.train_metrics)
-                self._log_batch(batch_idx, batch)
-                # we don't want to reset train metrics at the start of every epoch
-                # because we are interested in recent train metrics
-                last_train_metrics = self.train_metrics.result()
-                self.train_metrics.reset()
-            if batch_idx + 1 >= self.epoch_len:
-                break
+                self.train_metrics.update("grad_norm", self._get_grad_norm())
 
+                self.optimizer.zero_grad()
+
+                # log current results
+                if batch_idx % self.log_step == 0:
+                    self.writer.set_step((epoch - 1) * self.epoch_len + batch_idx)
+                    self.logger.debug(
+                        "Train Epoch: {} {} Loss: {:.6f}".format(
+                            epoch, self._progress(batch_idx), batch["loss"].item()
+                        )
+                    )
+                    if self.lr_scheduler is not None:
+                        self.writer.add_scalar(
+                            "learning rate", self.lr_scheduler.get_last_lr()[0]
+                        )
+                    else:
+                        self.writer.add_scalar("learning rate", self.config.optimizer.lr)
+
+                    self._log_scalars(self.train_metrics)
+                    self._log_batch(batch_idx, batch)
+                    # we don't want to reset train metrics at the start of every epoch
+                    # because we are interested in recent train metrics
+                    last_train_metrics = self.train_metrics.result()
+                    self.train_metrics.reset()
+                batch_idx += 1
+                if batch_idx >= self.epoch_len:
+                    break
         logs = last_train_metrics
 
         # Run val/test

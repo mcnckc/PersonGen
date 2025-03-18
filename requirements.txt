@@ -14,6 +14,7 @@ wandb
 comet_ml
 hydra-core
 hpsv2
+pytorch-fid
 
 black
 isort

@@ -1,7 +1,6 @@
 import hydra
 import torch
 from hydra.utils import instantiate
-from omegaconf import OmegaConf
 from torchvision import transforms
 from tqdm.auto import tqdm
 
@@ -41,12 +40,7 @@ def main(config):
         ]
 
         for path in [
-            "/home/jovyan/shares/SR006.nfs2/torchrik/refl_proj/HumanDiffusion/images_coco/lpips_refl_0.01_1_4_0",
-            "/home/jovyan/shares/SR006.nfs2/torchrik/refl_proj/HumanDiffusion/images_coco/lpips_refl_0.01_1_4_20",
-            "/home/jovyan/shares/SR006.nfs2/torchrik/refl_proj/HumanDiffusion/images_coco/lpips_refl_0.01_1_4_25",
-            "/home/jovyan/shares/SR006.nfs2/torchrik/refl_proj/HumanDiffusion/images_coco/lpips_refl_0.01_1_4_32",
-            "/home/jovyan/shares/SR006.nfs2/torchrik/refl_proj/HumanDiffusion/images_coco/lpips_refl_0.01_1_4_35",
-            "/home/jovyan/shares/SR006.nfs2/torchrik/refl_proj/HumanDiffusion/images_coco/lpips_refl_0.01_1_4_38",
+            "/home/jovyan/shares/SR006.nfs2/torchrik/refl_proj/HumanDiffusion/images_coco/fid_refl_0.01_35",
         ]:
             dataset = instantiate(
                 config.datasets.test,
@@ -80,7 +74,6 @@ def main(config):
                                 ),
                             ]
                         )
-                    print(rewards[-128:])
                 print(reward_model.model_suffix, rewards.mean(), rewards.std())
 
 

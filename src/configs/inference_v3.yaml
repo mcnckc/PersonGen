@@ -7,8 +7,8 @@ defaults:
   - transforms: empty
   - _self_
 inferencer:
-  type: 'InferenceV2'
-  start_timestep_indexs: [0, 20, 25, 32, 35, 38]
+  type: 'InferenceV3'
+  aig_ps: [1, 1.25, 1.5, 2, 3, 4, 5]
   end_timestep_index: 40
   device: auto
   save_dir: "saved"
