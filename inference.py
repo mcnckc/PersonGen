@@ -5,7 +5,7 @@ import torch
 from hydra.utils import instantiate
 from omegaconf import OmegaConf
 
-from src.constants.trainer import INFERENCER_NAME_TO_CLASS
+from src.constants import trainer as trainer_constants
 from src.datasets.data_utils import get_dataloaders
 from src.utils.init_utils import set_random_seed
 
@@ -36,12 +36,14 @@ def main(config):
 
     original_model = None
 
-    if config.inferencer.type not in INFERENCER_NAME_TO_CLASS:
-        raise ValueError(f"Inference type must be one of {INFERENCER_NAME_TO_CLASS}")
+    if config.inferencer.type not in trainer_constants.INFERENCER_NAME_TO_CLASS:
+        raise ValueError(
+            f"Inference type must be one of {trainer_constants.INFERENCER_NAME_TO_CLASS}"
+        )
 
-    inferencer_cls = INFERENCER_NAME_TO_CLASS[config.inferencer.type]
+    inferencer_cls = trainer_constants.INFERENCER_NAME_TO_CLASS[config.inferencer.type]
 
-    if config.inferencer.type in ("InferenceV2", "InferenceV3"):
+    if config.inferencer.type in trainer_constants.REQUIRES_ORIGINAL_MODEL:
         original_model = instantiate(config.model).to(device)
 
     inferencer = inferencer_cls(

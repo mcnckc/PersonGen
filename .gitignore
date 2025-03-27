@@ -109,6 +109,11 @@ wandb/
 .cometml-runs/
 outputs/
 images_coco/
+fid_data/
+new_exps/
+*.jpg
+*.ipynb
+*.npz
 
 # editor, os cache directory
 .vscode/

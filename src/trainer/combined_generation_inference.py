@@ -6,7 +6,7 @@ from src.reward_models import BaseModel
 from src.trainer.inferencer import Inferencer
 
 
-class InferencerV2(Inferencer):
+class CombinedGenerationInferencer(Inferencer):
     """
     Inferencer (Like Trainer but for Inference) class
 
@@ -53,6 +53,10 @@ class InferencerV2(Inferencer):
         self.global_image_index = 0
         if config.inferencer.get("from_pretrained"):
             self._from_pretrained(config.inferencer.get("from_pretrained"))
+        if self.cfg_trainer.original_model_gs is not None:
+            self.original_model.guidance_scale = self.cfg_trainer.original_model_gs
+        if self.cfg_trainer.model_gs is not None:
+            self.model.guidance_scale = self.cfg_trainer.model_gs
 
     def _sample_image(self, batch: dict[str, torch.Tensor]):
         self.model.set_timesteps(

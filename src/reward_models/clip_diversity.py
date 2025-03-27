@@ -1,6 +1,7 @@
 import typing as tp
 
 import clip
+import numpy as np
 import torch
 import torch.utils.checkpoint
 from transformers import AutoProcessor
@@ -14,33 +15,28 @@ MODEL_SUFFIX = "ClipDiversity"
 
 
 def get_tril_elements_mask(linear_size):
-    mask = torch.zeros((linear_size, linear_size), dtype=torch.bool)
-    mask[torch.tril_indices(linear_size, linear_size, offset=-1)] = True
+    mask = np.zeros((linear_size, linear_size), dtype=np.bool_)
+    mask[np.tril_indices_from(mask)] = True
+    np.fill_diagonal(mask, False)
     return mask
 
 
 def _diversity_from_embeddings_pairwise_cosines(imgs_encoded: torch.Tensor):
-    data = (imgs_encoded @ imgs_encoded.T).detach()
+    data = (imgs_encoded @ imgs_encoded.T).detach().cpu().numpy()
     mask = get_tril_elements_mask(data.shape[0])
-    masked = data[mask].to(dtype=torch.float64)
+    masked = data[mask].astype(np.float64)
     return masked
 
 
 class ClipDiversity(BaseModel):
-    def __init__(
-            self,
-            images_per_batch: int,
-            device: torch.device
-    ):
+    def __init__(self, images_per_batch: int, device: torch.device):
         super().__init__(
             model_suffix=MODEL_SUFFIX, reward_scale_factor=0.1, reward_offset=0
         )
         self.images_per_batch = images_per_batch
         self.processor = AutoProcessor.from_pretrained(PROCESSOR_NAME)
         self.clip_model, self.transform = clip.load(
-            MODEL_NAME,
-            device=device,
-            jit=False
+            MODEL_NAME, device=device, jit=False
         )
 
         self.device = device

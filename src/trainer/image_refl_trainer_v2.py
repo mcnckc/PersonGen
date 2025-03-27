@@ -1,93 +1,57 @@
-import random
-from contextlib import nullcontext
-
 import torch
 
 from src.constants.dataset import DatasetColumns
-from src.trainer.refl_trainer import ReFLTrainer
+from src.reward_models import ClipScore
+from src.trainer.image_refl_trainer import ImageReFLTrainer
 
 
-class ImageReFLTrainer(ReFLTrainer):
+class ImageReFLTrainerV2(ImageReFLTrainer):
     """
     Trainer class.
     Reproduce ImageReFL training.
     """
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        assert self.cfg_trainer.min_mid_timestep <= self.cfg_trainer.max_mid_timestep
-        assert (
-            self.cfg_trainer.start_timestep_index <= self.cfg_trainer.max_mid_timestep
+        self.clip_model = ClipScore(device=self.config.trainer.device).to(
+            self.config.trainer.device
         )
-        assert (
-            self.cfg_trainer.start_timestep_index <= self.cfg_trainer.min_mid_timestep
-        )
-
-        self.state = 0
 
     def _sample_image_train(self, batch: dict[str, torch.Tensor]) -> None:
-        if self.cfg_trainer.state_del is not None:
-            self.state += 1
-            self.state %= self.cfg_trainer.state_del
-
-        if (
-            self.cfg_trainer.state_del is not None
-            and self.state % self.cfg_trainer.state_del == 0
-        ):
-            super()._sample_image_train(batch=batch)
-            return
-
-        self.model.set_timesteps(self.cfg_trainer.max_mid_timestep, device=self.device)
-
-        mid_timestep = (
-            random.randint(
-                self.cfg_trainer.min_mid_timestep,
-                self.cfg_trainer.max_mid_timestep - 1,
-            )
-            if self.is_train
-            else self.cfg_trainer.max_mid_timestep - 1
+        super()._sample_image_train(batch)
+        if "loss" not in batch:
+            batch["loss"] = 0.0
+        encoded_image = self.clip_model.model.encode_image(batch["image"])
+        encoded_image = encoded_image / encoded_image.norm(dim=1, keepdim=True)
+        encoded_original_image = self.clip_model.model.encode_image(
+            self.model.get_reward_image(batch["original_image"])
         )
+        encoded_original_image = encoded_original_image / encoded_original_image.norm(
+            dim=1, keepdim=True
+        )
+        score = (1 - torch.sum(encoded_image * encoded_original_image, dim=1)).mean()
+
+        batch["loss"] += self.cfg_trainer.clip_scale * score
+        batch["cosine_similarity"] = score.detach()
+
+    def _sample_image_eval(self, batch: dict[str, torch.Tensor]):
+        self.model.set_timesteps(self.cfg_trainer.max_mid_timestep, device=self.device)
 
         original_images = batch[DatasetColumns.original_image.name]
 
-        with torch.no_grad():
-            noised_latents, noise = self.model.get_noisy_latents_from_images(
-                images=original_images,
-                timestep_index=self.cfg_trainer.start_timestep_index,
-            )
-            latents, encoder_hidden_states = self.model.do_k_diffusion_steps(
-                latents=noised_latents,
-                start_timestep_index=self.cfg_trainer.start_timestep_index,
-                end_timestep_index=mid_timestep,
-                batch=batch,
-                return_pred_original=False,
-            )
+        latents, _ = self.model.get_noisy_latents_from_images(
+            images=original_images,
+            timestep_index=self.cfg_trainer.start_timestep_index,
+        )
 
         batch["image"] = self.model.sample_image(
             latents=latents,
-            start_timestep_index=mid_timestep,
-            end_timestep_index=mid_timestep + 1,
-            encoder_hidden_states=encoder_hidden_states,
+            start_timestep_index=self.cfg_trainer.start_timestep_index,
+            end_timestep_index=self.cfg_trainer.max_mid_timestep,
             batch=batch,
         )
 
-        context_manager = (
-            nullcontext() if self.cfg_trainer.mse_loss_scale > 0 else torch.no_grad()
-        )
-        with nullcontext():
-            _, noise_pred = self.model.predict_next_latents(
-                latents=noised_latents,
-                timestep_index=self.cfg_trainer.start_timestep_index,
-                encoder_hidden_states=encoder_hidden_states,
-                batch=batch,
-            )
-            mse_loss = torch.nn.functional.mse_loss(noise_pred, noise)
-            batch["mse_loss"] = mse_loss
-
-        if self.cfg_trainer.mse_loss_scale > 0:
-            batch["loss"] = mse_loss * self.cfg_trainer.mse_loss_scale
-
     def _get_train_loss_names(self):
         train_loss_names = super()._get_train_loss_names()
-        train_loss_names.append("mse_loss")
+        train_loss_names.append("cosine_similarity")
         return train_loss_names

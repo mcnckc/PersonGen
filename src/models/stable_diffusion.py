@@ -1,7 +1,7 @@
 import typing as tp
 
 import torch
-from diffusers import AutoencoderKL, DDPMScheduler, UNet2DConditionModel
+from diffusers import AutoencoderKL, DDPMScheduler, SchedulerMixin, UNet2DConditionModel
 from diffusers.image_processor import VaeImageProcessor
 from PIL import Image
 from torchvision import transforms
@@ -21,6 +21,8 @@ class StableDiffusion(BaseModel):
         self,
         pretrained_model_name: str,
         revision: str | None = None,
+        noise_scheduler: SchedulerMixin | None = None,
+        guidance_scale: float = 7.5,
     ) -> None:
         """
         Initializes the components of  StableDiffusion model.
@@ -34,9 +36,13 @@ class StableDiffusion(BaseModel):
         """
         super().__init__(pretrained_model_name=pretrained_model_name, revision=revision)
 
-        self.noise_scheduler = DDPMScheduler.from_pretrained(
-            self.pretrained_model_name_or_path,
-            subfolder="scheduler",
+        self.noise_scheduler = (
+            noise_scheduler
+            if noise_scheduler is not None
+            else DDPMScheduler.from_pretrained(
+                self.pretrained_model_name_or_path,
+                subfolder="scheduler",
+            )
         )
         self.timesteps = self.noise_scheduler.timesteps
 
@@ -84,7 +90,7 @@ class StableDiffusion(BaseModel):
         self.vae.requires_grad_(False)
         self.text_encoder.requires_grad_(False)
 
-        self.guidance_scale = 7.5
+        self.guidance_scale = guidance_scale
 
     def train(self, mode: bool = True):
         """
@@ -202,12 +208,12 @@ class StableDiffusion(BaseModel):
         return self.text_encoder(text_input)[0]
 
     def get_noise_prediction(
-            self,
-            latents: torch.Tensor,
-            timestep_index: int,
-            encoder_hidden_states: torch.Tensor,
-            do_classifier_free_guidance: bool = False,
-            detach_main_path: bool = False,
+        self,
+        latents: torch.Tensor,
+        timestep_index: int,
+        encoder_hidden_states: torch.Tensor,
+        do_classifier_free_guidance: bool = False,
+        detach_main_path: bool = False,
     ):
         timestep = self.timesteps[timestep_index]
 
@@ -228,22 +234,20 @@ class StableDiffusion(BaseModel):
                 noise_pred_text = noise_pred_text.detach()
 
             noise_pred = noise_pred_uncond + self.guidance_scale * (
-                    noise_pred_text - noise_pred_uncond
+                noise_pred_text - noise_pred_uncond
             )
         return noise_pred
 
     def sample_next_latents(
-            self,
-            latents: torch.Tensor,
-            timestep_index: int,
-            noise_pred: torch.Tensor,
-            return_pred_original: bool = False
+        self,
+        latents: torch.Tensor,
+        timestep_index: int,
+        noise_pred: torch.Tensor,
+        return_pred_original: bool = False,
     ) -> torch.Tensor:
         timestep = self.timesteps[timestep_index]
         sample = self.noise_scheduler.step(
-            model_output=noise_pred,
-            timestep=timestep,
-            sample=latents
+            model_output=noise_pred, timestep=timestep, sample=latents
         )
         return (
             sample.pred_original_sample if return_pred_original else sample.prev_sample
@@ -273,13 +277,12 @@ class StableDiffusion(BaseModel):
             tuple: Next latents and predicted noise tensor.
         """
 
-
         noise_pred = self.get_noise_prediction(
             latents=latents,
             timestep_index=timestep_index,
             encoder_hidden_states=encoder_hidden_states,
             do_classifier_free_guidance=do_classifier_free_guidance,
-            detach_main_path=detach_main_path
+            detach_main_path=detach_main_path,
         )
 
         latents = self.sample_next_latents(

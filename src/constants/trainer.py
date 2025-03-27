@@ -1,10 +1,11 @@
 from src.trainer import (
+    CombinedGenerationInferencer,
     DraftKTrainer,
     ImageReFLTrainer,
     ImageReFLTrainerV2,
     Inferencer,
-    InferencerV2,
     InferencerV3,
+    ProFusionInferencer,
     ReFLTrainer,
 )
 
@@ -17,6 +18,13 @@ TRAINER_NAME_TO_CLASS = {
 
 INFERENCER_NAME_TO_CLASS = {
     "Inference": Inferencer,
-    "InferenceV2": InferencerV2,
+    "CombinedGenerationInferencer": CombinedGenerationInferencer,
+    "ProFusionInferencer": ProFusionInferencer,
     "InferenceV3": InferencerV3,
 }
+
+REQUIRES_ORIGINAL_MODEL = [
+    "CombinedGenerationInferencer",
+    "ProFusionInferencer",
+    "InferenceV3",
+]

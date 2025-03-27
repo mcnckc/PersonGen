@@ -1,5 +1,5 @@
 defaults:
-  - model: stable_diffusion_15
+  - model: stable_diffusion_15_ddim
   - reward_models: all_rewards
   - writer: inference_v2
   - datasets: inference_hps
@@ -7,8 +7,7 @@ defaults:
   - transforms: empty
   - _self_
 inferencer:
-  type: 'CombinedGenerationInferencer'
-  start_timestep_indexs: [0, 20, 25, 32, 35, 38]
+  type: 'ProFusionInferencer'
   end_timestep_index: 40
   device: auto
   save_dir: "saved"
@@ -16,5 +15,7 @@ inferencer:
   from_pretrained: "saved/image_refl_0.01/checkpoint-epoch20.pth"
   do_classifier_free_guidance: False
   save_images_path: 'images_coco/refl_coco'
-  original_model_gs: 7.5
+  original_model_gs: 5
   model_gs: 7.5
+  start_timestep_indexs: [0, 20, 25, 32, 35, 38]
+  with_two_models_cfg_prediction: False
