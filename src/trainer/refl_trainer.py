@@ -56,6 +56,10 @@ class ReFLTrainer(BaseTrainer):
                     images=batch[DatasetColumns.original_image.name],
                     timestep_index=mid_timestep,
                 )
+                if self.cfg_trainer.do_classifier_free_guidance:
+                    encoder_hidden_states = self.model.get_encoder_hidden_states(
+                        batch=batch, do_classifier_free_guidance=False
+                    )
                 _, noise_pred = self.model.predict_next_latents(
                     latents=noised_latents,
                     timestep_index=mid_timestep,

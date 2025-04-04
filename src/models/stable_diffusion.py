@@ -1,7 +1,14 @@
 import typing as tp
 
 import torch
-from diffusers import AutoencoderKL, DDPMScheduler, SchedulerMixin, UNet2DConditionModel
+from diffusers import (
+    AutoencoderKL,
+    DDPMScheduler,
+    SchedulerMixin,
+    StableDiffusionPipeline,
+    StableDiffusionXLPipeline,
+    UNet2DConditionModel,
+)
 from diffusers.image_processor import VaeImageProcessor
 from PIL import Image
 from torchvision import transforms
@@ -91,6 +98,7 @@ class StableDiffusion(BaseModel):
         self.text_encoder.requires_grad_(False)
 
         self.guidance_scale = guidance_scale
+        self.resolution = 512
 
     def train(self, mode: bool = True):
         """
@@ -172,7 +180,7 @@ class StableDiffusion(BaseModel):
         )
         return noisy_images, noise
 
-    def _get_negative_prompts(self, batch_size: int):
+    def _get_negative_prompts(self, batch_size: int) -> torch.Tensor:
         return self.tokenizer(
             [""] * batch_size,
             max_length=self.tokenizer.model_max_length,
@@ -207,6 +215,18 @@ class StableDiffusion(BaseModel):
 
         return self.text_encoder(text_input)[0]
 
+    def get_unet_prediction(
+        self,
+        latent_model_input: torch.Tensor,
+        timestep: int,
+        encoder_hidden_states: torch.Tensor,
+    ) -> torch.Tensor:
+        return self.unet(
+            latent_model_input,
+            timestep=timestep,
+            encoder_hidden_states=encoder_hidden_states,
+        ).sample
+
     def get_noise_prediction(
         self,
         latents: torch.Tensor,
@@ -222,11 +242,11 @@ class StableDiffusion(BaseModel):
             timestep=timestep,
         )
 
-        noise_pred = self.unet(
-            latent_model_input,
+        noise_pred = self.get_unet_prediction(
+            latent_model_input=latent_model_input,
             timestep=timestep,
             encoder_hidden_states=encoder_hidden_states,
-        ).sample
+        )
 
         if do_classifier_free_guidance:
             noise_pred_uncond, noise_pred_text = noise_pred.chunk(2)
@@ -320,7 +340,8 @@ class StableDiffusion(BaseModel):
             tuple: Resulting latents and encoder hidden states.
         """
         assert start_timestep_index <= end_timestep_index
-        batch_size = batch[DatasetColumns.tokenized_text.name].shape[0]
+        batch_size = batch[DatasetColumns.tokenized_text.name].size(0)
+        device = batch[DatasetColumns.tokenized_text.name].device
 
         if encoder_hidden_states is None:
             encoder_hidden_states = self.get_encoder_hidden_states(
@@ -328,9 +349,15 @@ class StableDiffusion(BaseModel):
             )
 
         if latents is None:
+            latent_resolution = int(self.resolution) // self.vae_scale_factor
             latents = torch.randn(
-                (batch_size, 4, 64, 64),
-                device=encoder_hidden_states.device,
+                (
+                    batch_size,
+                    self.unet.config.in_channels,
+                    latent_resolution,
+                    latent_resolution,
+                ),
+                device=device,
             )
 
         for timestep_index in range(start_timestep_index, end_timestep_index - 1):

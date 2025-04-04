@@ -78,7 +78,6 @@ class DatasetWrapper(Dataset):
         self.image_process = transforms.Compose(
             [
                 transforms.Resize((512, 512)),
-                transforms.CenterCrop((512, 512)),
                 transforms.ToTensor(),
                 transforms.Normalize([0.5], [0.5]),
             ]
@@ -181,19 +180,16 @@ class DatasetWrapper(Dataset):
         """
         first_row = raw_dataset[0]
 
-        assert text_column in raw_dataset.column_names,\
-            "text_column must be present in raw_dataset"
+        assert (
+            text_column in raw_dataset.column_names
+        ), "text_column must be present in raw_dataset"
 
+        assert isinstance(first_row[text_column], str) or (
+            isinstance(first_row[text_column], list)
+            and isinstance(first_row[text_column][0], str)
+        ), "text column must contain str or list[str]"
 
         assert (
-            isinstance(first_row[text_column], str)
-            or (
-                isinstance(first_row[text_column], list)
-                and isinstance(first_row[text_column][0], str)
-                )
-            ), "text column must contain str or list[str]"
-
-
-        assert  image_column is None or image_column in raw_dataset.column_names, \
-                "image_column must be present in raw_dataset"
+            image_column is None or image_column in raw_dataset.column_names
+        ), "image_column must be present in raw_dataset"
         # TODO: add image validation
