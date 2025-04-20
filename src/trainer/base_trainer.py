@@ -157,9 +157,9 @@ class BaseTrainer:
         """
         not_improved_count = 0
 
-        # first calculate start metrics
-        # for part, dataloader in self.evaluation_dataloaders.items():
-        #     self._evaluation_epoch(self.start_epoch - 1, part, dataloader)
+        if self.cfg_trainer.calculate_initial_model_metrics:
+            for part, dataloader in self.evaluation_dataloaders.items():
+                self._evaluation_epoch(self.start_epoch - 1, part, dataloader)
 
         for epoch in range(self.start_epoch, self.epochs + 1):
             self._last_epoch = epoch
@@ -262,8 +262,8 @@ class BaseTrainer:
             if accumulation_step % self.cfg_trainer.accumulation_steps == 0:
                 self._clip_grad_norm()
                 self.optimizer.step()
-                # self.scaler.step(self.optimizer)
-                # self.scaler.update()
+                self.scaler.step(self.optimizer)
+                self.scaler.update()
                 if self.lr_scheduler is not None:
                     self.lr_scheduler.step()
 

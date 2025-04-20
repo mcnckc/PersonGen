@@ -102,9 +102,10 @@ class StableDiffusion(BaseModel):
                 model_cls=UNet2DConditionModel,
                 model_config=ema_unet.config,
             )
+
         self.use_lora = use_lora
-        self.lora_rank = lora_rank
         if use_lora:
+            self.lora_rank = lora_rank
             self.unet.requires_grad_(False)
             unet_lora_config = LoraConfig(
                 r=lora_rank,
@@ -114,7 +115,7 @@ class StableDiffusion(BaseModel):
             )
             self.unet.add_adapter(unet_lora_config)
 
-        self.image_processor = transforms.Compose(
+        self.reward_image_processor = transforms.Compose(
             [
                 transforms.Resize(
                     224, interpolation=transforms.InterpolationMode.BICUBIC
@@ -127,8 +128,8 @@ class StableDiffusion(BaseModel):
             ]
         )
 
+        # reproduce StableDiffusionPipeline
         self.vae_scale_factor = 2 ** (len(self.vae.config.block_out_channels) - 1)
-
         self.inference_image_processor = VaeImageProcessor(
             vae_scale_factor=self.vae_scale_factor
         )
@@ -236,6 +237,7 @@ class StableDiffusion(BaseModel):
 
         Args:
             batch (dict): A batch containing tokenized text.
+            do_classifier_free_guidance (bool)  Whether to do classifier free guidance
 
         Returns:
             torch.Tensor: Hidden states from the text encoder.
@@ -254,12 +256,24 @@ class StableDiffusion(BaseModel):
 
         return self.text_encoder(text_input)[0]
 
-    def get_unet_prediction(
+    def _get_unet_prediction(
         self,
         latent_model_input: torch.Tensor,
         timestep: int,
         encoder_hidden_states: torch.Tensor,
     ) -> torch.Tensor:
+        """
+        Return unet noise prediction
+
+        Args:
+            latent_model_input (torch.Tensor): Unet latents input
+            timestep (int): noise scheduler timestep
+            encoder_hidden_states (torch.Tensor): Text encoder hidden states
+
+        Returns:
+            torch.Tensor: noise prediction
+        """
+
         return self.unet(
             latent_model_input,
             timestep=timestep,
@@ -274,6 +288,19 @@ class StableDiffusion(BaseModel):
         do_classifier_free_guidance: bool = False,
         detach_main_path: bool = False,
     ):
+        """
+        Return noise prediction
+
+        Args:
+            latents (torch.Tensor): Image latents
+            timestep_index (int): noise scheduler timestep index
+            encoder_hidden_states (torch.Tensor): Text encoder hidden states
+            do_classifier_free_guidance (bool)  Whether to do classifier free guidance
+            detach_main_path (bool): Detach gradient
+
+        Returns:
+            torch.Tensor: noise prediction
+        """
         timestep = self.timesteps[timestep_index]
 
         latent_model_input = self.noise_scheduler.scale_model_input(
@@ -281,7 +308,7 @@ class StableDiffusion(BaseModel):
             timestep=timestep,
         )
 
-        noise_pred = self.get_unet_prediction(
+        noise_pred = self._get_unet_prediction(
             latent_model_input=latent_model_input,
             timestep=timestep,
             encoder_hidden_states=encoder_hidden_states,
@@ -304,6 +331,18 @@ class StableDiffusion(BaseModel):
         noise_pred: torch.Tensor,
         return_pred_original: bool = False,
     ) -> torch.Tensor:
+        """
+        Return next latents prediction
+
+        Args:
+            latents (torch.Tensor): Image latents
+            timestep_index (int): noise scheduler timestep index
+            noise_pred (torch.Tensor): noise prediction
+            return_pred_original (bool)  Whether to sample original sample
+
+        Returns:
+            torch.Tensor: latent prediction
+        """
         timestep = self.timesteps[timestep_index]
         sample = self.noise_scheduler.step(
             model_output=noise_pred, timestep=timestep, sample=latents
@@ -331,6 +370,8 @@ class StableDiffusion(BaseModel):
             encoder_hidden_states (torch.Tensor): Encoder hidden states from the text encoder.
             batch (dict): Input batch containing data.
             return_pred_original (bool): Whether to return the predicted original sample.
+            do_classifier_free_guidance (bool)  Whether to do classifier free guidance
+            detach_main_path (bool): Detach gradient
 
         Returns:
             tuple: Next latents and predicted noise tensor.
@@ -374,6 +415,8 @@ class StableDiffusion(BaseModel):
             latents (torch.Tensor | None): Initial latents (optional).
             encoder_hidden_states (torch.Tensor | None): Encoder hidden states (optional).
             return_pred_original (bool): Whether to return the predicted original sample.
+            do_classifier_free_guidance (bool)  Whether to do classifier free guidance
+            detach_main_path (bool): Detach gradient
 
         Returns:
             tuple: Resulting latents and encoder hidden states.
@@ -435,7 +478,7 @@ class StableDiffusion(BaseModel):
             dy=random.randint(0, math.ceil(self.resolution / 224)),
         )
 
-        return self.image_processor(reward_images)
+        return self.reward_image_processor(reward_images)
 
     def sample_image(
         self,
@@ -456,6 +499,8 @@ class StableDiffusion(BaseModel):
             end_timestep_index (int): Ending timestep index.
             batch (dict): Input batch containing data.
             encoder_hidden_states (torch.Tensor | None): Encoder hidden states (optional).
+            do_classifier_free_guidance (bool)  Whether to do classifier free guidance
+            detach_main_path (bool): Detach gradient
 
         Returns:
             torch.Tensor: Decoded image sample.
@@ -484,10 +529,10 @@ class StableDiffusion(BaseModel):
         batch: dict[str, torch.Tensor],
         encoder_hidden_states: torch.Tensor | None = None,
         do_classifier_free_guidance: bool = False,
-        detach_main_path: bool = False,
     ) -> tuple[torch.Tensor, list[Image]]:
         """
         Generates an image sample by decoding the latents.
+        Returns image with original shape and resized to reward model
 
         Args:
             latents (torch.Tensor | None): Initial latents (optional).
@@ -495,6 +540,7 @@ class StableDiffusion(BaseModel):
             end_timestep_index (int): Ending timestep index.
             batch (dict): Input batch containing data.
             encoder_hidden_states (torch.Tensor | None): Encoder hidden states (optional).
+            do_classifier_free_guidance (bool)  Whether to do classifier free guidance
 
         Returns:
             torch.Tensor: Decoded image sample.
@@ -507,7 +553,6 @@ class StableDiffusion(BaseModel):
             encoder_hidden_states=encoder_hidden_states,
             return_pred_original=True,
             do_classifier_free_guidance=do_classifier_free_guidance,
-            detach_main_path=detach_main_path,
         )
 
         pred_original_sample /= self.vae.config.scaling_factor

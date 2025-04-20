@@ -106,6 +106,16 @@ class StableDiffusionXL(StableDiffusion):
     def get_encoder_hidden_states(
         self, batch: dict[str, torch.Tensor], do_classifier_free_guidance: bool = False
     ) -> HIDDEN_STATE_TYPE:
+        """
+        Retrieves the hidden states from the text encoder.
+
+        Args:
+            batch (dict): A batch containing tokenized text.
+            do_classifier_free_guidance (bool)  Whether to do classifier free guidance
+
+        Returns:
+            torch.Tensor: Hidden states from the text encoder.
+        """
         text_input_ids_list = [
             batch[DatasetColumns.tokenized_text.name],
             batch[DatasetColumns.tokenized_text.name + self.second_tokenizer_suffix],
@@ -160,6 +170,17 @@ class StableDiffusionXL(StableDiffusion):
         timestep: int,
         encoder_hidden_states: HIDDEN_STATE_TYPE,
     ) -> torch.Tensor:
+        """
+        Return unet noise prediction
+
+        Args:
+            latent_model_input (torch.Tensor): Unet latents input
+            timestep (int): noise scheduler timestep
+            encoder_hidden_states (tuple[torch.Tensor, torch.Tensor]): Text encoder hidden states
+
+        Returns:
+            torch.Tensor: noise prediction
+        """
         prompt_embeds, pooled_prompt_embeds = encoder_hidden_states
         target_size = torch.tensor(
             [

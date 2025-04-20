@@ -27,3 +27,4 @@ trainer:
   early_stop: ${trainer.n_epochs} # epochs for early stopping
   save_dir: "saved"
   seed: 1
+  calculate_initial_model_metrics: False

@@ -34,10 +34,10 @@ def main(config):
     else:
         device = config.trainer.device
 
+    # build stable diffusion models
     model = instantiate(config.model).to(device)
     if model.use_ema:
         model.ema_unet.to(device)
-    # build stable diffusion models
 
     # build reward models
     train_reward_model = instantiate(

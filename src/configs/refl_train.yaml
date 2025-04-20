@@ -30,3 +30,4 @@ trainer:
   mse_loss_scale: 0
   do_classifier_free_guidance: False
   detach_main_path: False
+  calculate_initial_model_metrics: False
