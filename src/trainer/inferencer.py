@@ -2,6 +2,7 @@ import typing as tp
 from pathlib import Path
 
 import torch
+from torch.cuda.amp import autocast
 from tqdm.auto import tqdm
 
 from src.constants.dataset import DatasetColumns
@@ -145,19 +146,20 @@ class Inferencer(BaseTrainer):
         self.all_metrics.reset()
         set_random_seed(self.cfg_trainer.seed)
 
-        with torch.no_grad():
-            for batch in tqdm(
-                dataloader,
-                desc=part,
-                total=len(dataloader),
-            ):
-                batch = self.process_batch(batch=batch, metrics=self.all_metrics)
+        with autocast(dtype=torch.bfloat16):
+            with torch.no_grad():
+                for batch in tqdm(
+                    dataloader,
+                    desc=part,
+                    total=len(dataloader),
+                ):
+                    batch = self.process_batch(batch=batch, metrics=self.all_metrics)
 
-                for loss_name in self.loss_names:
-                    if loss_name in batch:
-                        self.all_metrics.update(loss_name, batch[loss_name].item())
-                if self.cfg_trainer.save_images_path:
-                    self._save_images(batch)
+                    for loss_name in self.loss_names:
+                        if loss_name in batch:
+                            self.all_metrics.update(loss_name, batch[loss_name].item())
+                    if self.cfg_trainer.save_images_path:
+                        self._save_images(batch)
 
         self.writer.add_image(
             image_name="generated",

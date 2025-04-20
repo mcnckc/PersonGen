@@ -1,10 +1,10 @@
 from src.trainer import (
+    AIGInferencer,
     CombinedGenerationInferencer,
     DraftKTrainer,
     ImageReFLTrainer,
     ImageReFLTrainerV2,
     Inferencer,
-    InferencerV3,
     ProFusionInferencer,
     ReFLTrainer,
 )
@@ -20,11 +20,11 @@ INFERENCER_NAME_TO_CLASS = {
     "Inference": Inferencer,
     "CombinedGenerationInferencer": CombinedGenerationInferencer,
     "ProFusionInferencer": ProFusionInferencer,
-    "InferenceV3": InferencerV3,
+    "AIGInferencer": AIGInferencer,
 }
 
 REQUIRES_ORIGINAL_MODEL = [
     "CombinedGenerationInferencer",
     "ProFusionInferencer",
-    "InferenceV3",
+    "AIGInferencer",
 ]

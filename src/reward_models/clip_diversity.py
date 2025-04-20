@@ -22,7 +22,7 @@ def get_tril_elements_mask(linear_size):
 
 
 def _diversity_from_embeddings_pairwise_cosines(imgs_encoded: torch.Tensor):
-    data = (imgs_encoded @ imgs_encoded.T).detach().cpu().numpy()
+    data = (imgs_encoded @ imgs_encoded.T).to(torch.float32).detach().cpu().numpy()
     mask = get_tril_elements_mask(data.shape[0])
     masked = data[mask].astype(np.float64)
     return masked

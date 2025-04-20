@@ -1,5 +1,5 @@
 test:
   _target_: torch.utils.data.DataLoader
   batch_size: 30
-  num_workers: 16
+  num_workers: 15
   pin_memory: True

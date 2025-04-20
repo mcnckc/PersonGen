@@ -239,9 +239,9 @@ class BaseTrainer:
         batch_idx = 0
         self.optimizer.zero_grad()
         for batch in tqdm(
-                self.train_dataloader,
-                desc="train",
-                total=self.epoch_len * self.cfg_trainer.accumulation_steps
+            self.train_dataloader,
+            desc="train",
+            total=self.epoch_len * self.cfg_trainer.accumulation_steps,
         ):
             try:
                 batch = self.process_batch(
@@ -250,9 +250,7 @@ class BaseTrainer:
                 )
                 for loss_name in self.train_loss_names:
                     if loss_name in batch:
-                        self.train_metrics.update(
-                            loss_name, batch[loss_name].item()
-                        )
+                        self.train_metrics.update(loss_name, batch[loss_name].item())
             except torch.cuda.OutOfMemoryError as e:
                 if self.skip_oom:
                     self.logger.warning("OOM on batch. Skipping batch.")
@@ -263,8 +261,9 @@ class BaseTrainer:
             accumulation_step += 1
             if accumulation_step % self.cfg_trainer.accumulation_steps == 0:
                 self._clip_grad_norm()
-                self.scaler.step(self.optimizer)
-                self.scaler.update()
+                self.optimizer.step()
+                # self.scaler.step(self.optimizer)
+                # self.scaler.update()
                 if self.lr_scheduler is not None:
                     self.lr_scheduler.step()
 
@@ -285,7 +284,9 @@ class BaseTrainer:
                             "learning rate", self.lr_scheduler.get_last_lr()[0]
                         )
                     else:
-                        self.writer.add_scalar("learning rate", self.config.optimizer.lr)
+                        self.writer.add_scalar(
+                            "learning rate", self.config.optimizer.lr
+                        )
 
                     self._log_scalars(self.train_metrics)
                     self._log_batch(batch_idx, batch)

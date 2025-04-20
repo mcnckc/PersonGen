@@ -4,11 +4,12 @@ from src.constants.dataset import DatasetColumns
 from src.trainer.combined_generation_inference import CombinedGenerationInferencer
 
 
-class InferencerV3(CombinedGenerationInferencer):
+class AIGInferencer(CombinedGenerationInferencer):
     def run_inference(self):
         part_logs = {}
         for i, aig_p in enumerate(self.cfg_trainer.aig_ps):
             self.aig_p = aig_p
+            self.start_timestep_index = aig_p
 
             for part, dataloader in self.evaluation_dataloaders.items():
                 logs = self._inference_part(
@@ -36,12 +37,12 @@ class InferencerV3(CombinedGenerationInferencer):
         )
 
         original_model_hid_state = self.original_model.get_encoder_hidden_states(
-            batch=batch, do_classifier_free_guidance=True
+            batch=batch, do_classifier_free_guidance=False
         )
 
         model_hid_state = self.model.get_encoder_hidden_states(
             batch=batch,
-            do_classifier_free_guidance=self.cfg_trainer.do_classifier_free_guidance,
+            do_classifier_free_guidance=False,
         )
 
         for step_index in range(T):
@@ -50,14 +51,14 @@ class InferencerV3(CombinedGenerationInferencer):
                 latents=latents,
                 timestep_index=step_index,
                 encoder_hidden_states=original_model_hid_state,
-                do_classifier_free_guidance=True,
+                do_classifier_free_guidance=False,
             )
 
-            model_noise_pred = self.original_model.get_noise_prediction(
+            model_noise_pred = self.model.get_noise_prediction(
                 latents=latents,
                 timestep_index=step_index,
                 encoder_hidden_states=model_hid_state,
-                do_classifier_free_guidance=self.cfg_trainer.do_classifier_free_guidance,
+                do_classifier_free_guidance=False,
             )
 
             noise_pred = (

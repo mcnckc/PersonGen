@@ -1,21 +1,34 @@
+import math
+import random
 import typing as tp
 
 import torch
-from diffusers import (
-    AutoencoderKL,
-    DDPMScheduler,
-    SchedulerMixin,
-    StableDiffusionPipeline,
-    StableDiffusionXLPipeline,
-    UNet2DConditionModel,
-)
+from diffusers import AutoencoderKL, DDPMScheduler, SchedulerMixin, UNet2DConditionModel
 from diffusers.image_processor import VaeImageProcessor
+from diffusers.training_utils import EMAModel
+from peft import LoraConfig
 from PIL import Image
 from torchvision import transforms
 from transformers import CLIPTextModel, CLIPTokenizer
 
 from src.constants.dataset import DatasetColumns
 from src.models.base_model import BaseModel
+
+
+def shift_tensor_batch(images, dx=0, dy=0, fill_value=0):
+    shifted = torch.roll(images, shifts=(dy, dx), dims=(2, 3))  # dims: H, W
+
+    if dy > 0:
+        shifted[:, :, :dy, :] = fill_value
+    elif dy < 0:
+        shifted[:, :, dy:, :] = fill_value
+
+    if dx > 0:
+        shifted[:, :, :, :dx] = fill_value
+    elif dx < 0:
+        shifted[:, :, :, dx:] = fill_value
+
+    return shifted
 
 
 class StableDiffusion(BaseModel):
@@ -30,6 +43,9 @@ class StableDiffusion(BaseModel):
         revision: str | None = None,
         noise_scheduler: SchedulerMixin | None = None,
         guidance_scale: float = 7.5,
+        use_ema: bool = False,
+        use_lora: bool = False,
+        lora_rank: int | None = None,
     ) -> None:
         """
         Initializes the components of  StableDiffusion model.
@@ -76,11 +92,34 @@ class StableDiffusion(BaseModel):
             subfolder="unet",
         )
 
+        self.use_ema = use_ema
+        if use_ema:
+            ema_unet = UNet2DConditionModel.from_pretrained(
+                self.pretrained_model_name_or_path, subfolder="unet"
+            )
+            self.ema_unet = EMAModel(
+                ema_unet.parameters(),
+                model_cls=UNet2DConditionModel,
+                model_config=ema_unet.config,
+            )
+        self.use_lora = use_lora
+        self.lora_rank = lora_rank
+        if use_lora:
+            self.unet.requires_grad_(False)
+            unet_lora_config = LoraConfig(
+                r=lora_rank,
+                lora_alpha=lora_rank,
+                init_lora_weights="gaussian",
+                target_modules=["to_k", "to_q", "to_v", "to_out.0"],
+            )
+            self.unet.add_adapter(unet_lora_config)
+
         self.image_processor = transforms.Compose(
             [
                 transforms.Resize(
                     224, interpolation=transforms.InterpolationMode.BICUBIC
                 ),
+                transforms.CenterCrop(224),
                 transforms.Normalize(
                     (0.48145466, 0.4578275, 0.40821073),
                     (0.26862954, 0.26130258, 0.27577711),
@@ -389,6 +428,13 @@ class StableDiffusion(BaseModel):
 
     def get_reward_image(self, raw_images: torch.Tensor) -> torch.Tensor:
         reward_images = (raw_images / 2 + 0.5).clamp(0, 1)
+
+        shift_tensor_batch(
+            reward_images,
+            dx=random.randint(0, math.ceil(self.resolution / 224)),
+            dy=random.randint(0, math.ceil(self.resolution / 224)),
+        )
+
         return self.image_processor(reward_images)
 
     def sample_image(

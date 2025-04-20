@@ -1,23 +1,22 @@
 import typing as tp
 
 import torch
-from diffusers import (
-    AutoencoderKL,
-    DDPMScheduler,
-    SchedulerMixin,
-    StableDiffusionPipeline,
-    StableDiffusionXLPipeline,
-    UNet2DConditionModel,
-)
-from diffusers.image_processor import VaeImageProcessor
-from PIL import Image
-from torchvision import transforms
+from diffusers import SchedulerMixin
 from transformers import CLIPTextModelWithProjection, CLIPTokenizer
 
 from src.constants.dataset import DatasetColumns
 from src.models.stable_diffusion import StableDiffusion
 
 HIDDEN_STATE_TYPE = tuple[torch.Tensor, torch.Tensor]
+
+
+def compute_time_ids(original_size, crops_coords_top_left, resolution):
+    # Adapted from pipeline.StableDiffusionXLPipeline._get_add_time_ids
+    target_size = torch.tensor([[resolution, resolution]], device=original_size.device)
+    target_size = target_size.expand_as(original_size)
+
+    add_time_ids = torch.cat([original_size, crops_coords_top_left, target_size], dim=1)
+    return add_time_ids
 
 
 class StableDiffusionXL(StableDiffusion):
@@ -33,16 +32,19 @@ class StableDiffusionXL(StableDiffusion):
         noise_scheduler: SchedulerMixin | None = None,
         guidance_scale: float = 5,
         resolution: int = 512,
+        **kwargs,
     ) -> None:
         super().__init__(
             pretrained_model_name=pretrained_model_name,
             revision=revision,
             noise_scheduler=noise_scheduler,
             guidance_scale=guidance_scale,
+            **kwargs,
         )
         self.text_encoder_2 = CLIPTextModelWithProjection.from_pretrained(
             pretrained_model_name, subfolder="text_encoder_2", revision=revision
         )
+        self.text_encoder_2.requires_grad_(False)
         self.tokenizer_2 = CLIPTokenizer.from_pretrained(
             pretrained_model_name, subfolder="tokenizer_2", revision=revision
         )
@@ -175,7 +177,6 @@ class StableDiffusionXL(StableDiffusion):
             "time_ids": add_time_ids,
             "text_embeds": pooled_prompt_embeds,
         }
-        # print(timestep, 'prompt_embeds', prompt_embeds, 'unet_added_conditions', unet_added_conditions, sep='\n')
 
         return self.unet(
             latent_model_input,

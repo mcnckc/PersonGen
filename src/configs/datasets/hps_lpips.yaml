@@ -1,7 +1,0 @@
-test:
-  _target_: src.datasets.DatasetWrapper
-  dataset_name: "ymhao/HPDv2"
-  cache_dir: "/home/jovyan/shares/SR006.nfs2/torchrik/refl_proj/cache"
-  text_column: 'prompt'
-  images_path: '/home/jovyan/shares/SR006.nfs2/torchrik/refl_proj/HumanDiffusion/images_coco/lpips_refl_0.01_1_4_0'
-  duplicate_count: 5

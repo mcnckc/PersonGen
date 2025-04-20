@@ -34,6 +34,7 @@ class DatasetWrapper(Dataset):
         raw_dataset: Dataset | None = None,
         fixed_length: int | None = None,
         duplicate_count: int | None = None,
+        resolution: int = 512,
     ):
         """
         Initializes the DatasetWrapper.
@@ -74,10 +75,11 @@ class DatasetWrapper(Dataset):
         self.images_per_row = images_per_row
         self.fixed_length = fixed_length
         self.duplicate_count = duplicate_count
+        self.resolution = resolution
 
         self.image_process = transforms.Compose(
             [
-                transforms.Resize((512, 512)),
+                transforms.Resize((self.resolution, self.resolution)),
                 transforms.ToTensor(),
                 transforms.Normalize([0.5], [0.5]),
             ]
@@ -92,13 +94,12 @@ class DatasetWrapper(Dataset):
         )
         return caption
 
-    def _get_image(self, ind: int, image_index: int | None) -> torch.Tensor:
+    def _get_image(
+        self, ind: int, image_index: int | None, original_index: int
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         if self.images_path:
             return self.image_process(
-                Image.open(
-                    self.images_path
-                    / get_image_name_by_index(ind + self.local_image_offset)
-                )
+                Image.open(self.images_path / get_image_name_by_index(original_index))
             ).unsqueeze(0)
 
         data_dict = self.raw_dataset[ind]
@@ -123,6 +124,7 @@ class DatasetWrapper(Dataset):
         Returns:
             dict: A dictionary containing tokenized text and optionally processed image data.
         """
+        original_index = ind
         if self.duplicate_count is not None:
             ind //= self.duplicate_count
 
@@ -138,7 +140,7 @@ class DatasetWrapper(Dataset):
 
         if self.image_column is not None or self.images_path is not None:
             res[DatasetColumns.original_image.name] = self._get_image(
-                ind=ind, image_index=image_index
+                ind=ind, image_index=image_index, original_index=original_index
             )
 
         return res

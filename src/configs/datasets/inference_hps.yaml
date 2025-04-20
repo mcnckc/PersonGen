@@ -4,4 +4,4 @@ test:
   cache_dir: "/home/jovyan/shares/SR006.nfs2/torchrik/refl_proj/cache"
   text_column: 'prompt'
   image_column: 'image'
-  images_per_row: 5
+  duplicate_count: 5

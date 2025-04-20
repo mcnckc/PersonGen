@@ -35,12 +35,12 @@ def main(config):
 
     with torch.no_grad():
         reward_models = [
-            instantiate(reward_model_config, device=device)
-            for reward_model_config in config.reward_models
+            instantiate(reward_model_cfg, device=device).to(device)
+            for reward_model_cfg in config.reward_models
         ]
 
         for path in [
-            "/home/jovyan/shares/SR006.nfs2/torchrik/refl_proj/HumanDiffusion/images_coco/fid_refl_0.01_35",
+            "/home/jovyan/shares/SR006.nfs2/torchrik/refl_proj/HumanDiffusion/images_coco/image_refl_xl_v_25",
         ]:
             dataset = instantiate(
                 config.datasets.test,
@@ -62,8 +62,9 @@ def main(config):
                     if rewards is None:
                         rewards = reward_model._get_reward(
                             batch=batch,
-                            image=reward_image_processor(raw_images),
-                        )
+                            image=raw_images,
+                        ).cpu()
+                        print(rewards)
                     else:
                         rewards = torch.cat(
                             [
@@ -71,7 +72,7 @@ def main(config):
                                 reward_model._get_reward(
                                     batch=batch,
                                     image=reward_image_processor(raw_images),
-                                ),
+                                ).cpu(),
                             ]
                         )
                 print(reward_model.model_suffix, rewards.mean(), rewards.std())
