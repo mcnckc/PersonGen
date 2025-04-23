@@ -38,7 +38,7 @@ class ImageReward(BaseModel):
 
         return {
             f"{DatasetColumns.tokenized_text.name}_{self.model_suffix}": processed_caption.input_ids,
-            f"{DatasetColumns.text_attention_mask.name}_{self.model_suffix}": processed_caption.input_ids,
+            f"{DatasetColumns.text_attention_mask.name}_{self.model_suffix}": processed_caption.attention_mask,
         }
 
     def _get_reward(

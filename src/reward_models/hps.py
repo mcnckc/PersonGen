@@ -22,7 +22,7 @@ class HPS(BaseModel):
             model_suffix=MODEL_SUFFIX, reward_scale_factor=1, reward_offset=0
         )
 
-        model, preprocess_train, preprocess_val = img_score.create_model_and_transforms(
+        model, _, _ = img_score.create_model_and_transforms(
             PROCESSOR_NAME,
             PRETRAINED_MODEL_NAME,
             precision="amp",

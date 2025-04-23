@@ -10,15 +10,6 @@ from src.models.stable_diffusion import StableDiffusion
 HIDDEN_STATE_TYPE = tuple[torch.Tensor, torch.Tensor]
 
 
-def compute_time_ids(original_size, crops_coords_top_left, resolution):
-    # Adapted from pipeline.StableDiffusionXLPipeline._get_add_time_ids
-    target_size = torch.tensor([[resolution, resolution]], device=original_size.device)
-    target_size = target_size.expand_as(original_size)
-
-    add_time_ids = torch.cat([original_size, crops_coords_top_left, target_size], dim=1)
-    return add_time_ids
-
-
 class StableDiffusionXL(StableDiffusion):
     """
     A Stable Diffusion XL model wrapper that provides functionality for text-to-image synthesis,
@@ -164,7 +155,7 @@ class StableDiffusionXL(StableDiffusion):
         pooled_prompt_embeds = pooled_prompt_embeds.view(bs_embed, -1)
         return prompt_embeds, pooled_prompt_embeds
 
-    def get_unet_prediction(
+    def _get_unet_prediction(
         self,
         latent_model_input: torch.Tensor,
         timestep: int,

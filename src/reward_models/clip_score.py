@@ -43,8 +43,8 @@ class ClipScore(BaseModel):
         candidates = self.model.encode_text(tokenized_caption)
         images = self.model.encode_image(image)
 
-        images = torch.nn.functional.normalize(images, dim=1)
-        candidates = torch.nn.functional.normalize(candidates, dim=1)
+        images = torch.nn.functional.normalize(images, dim=-1)
+        candidates = torch.nn.functional.normalize(candidates, dim=-1)
 
-        reward = torch.clip(torch.sum(images * candidates, axis=1), 0, None)
+        reward = torch.diagonal(candidates @ images.T)
         return reward

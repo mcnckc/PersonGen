@@ -5,3 +5,4 @@ defaults:
   - transforms: empty
   - _self_
 device: 'cuda:0'
+images_paths: []

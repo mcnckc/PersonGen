@@ -12,7 +12,9 @@ from src.utils.init_utils import set_random_seed
 warnings.filterwarnings("ignore", category=UserWarning)
 
 
-@hydra.main(version_base=None, config_path="src/configs", config_name="inference_v2")
+@hydra.main(
+    version_base=None, config_path="src/configs", config_name="combined_inference"
+)
 def main(config):
     set_random_seed(config.inferencer.seed)
     project_config = OmegaConf.to_container(config)

@@ -16,11 +16,11 @@ MODEL_SUFFIX = "PickScore"
 class PickScore(BaseModel):
     def __init__(self, device: torch.device):
         super().__init__(
-            model_suffix=MODEL_SUFFIX, reward_scale_factor=0.1, reward_offset=0
+            model_suffix=MODEL_SUFFIX, reward_scale_factor=0.1, reward_offset=-20
         )
 
         self.processor = AutoProcessor.from_pretrained(PROCESSOR_NAME)
-        self.model = AutoModel.from_pretrained(PRETRAINED_MODEL_NAME)
+        self.model = AutoModel.from_pretrained(PRETRAINED_MODEL_NAME).eval()
 
         self.device = device
 

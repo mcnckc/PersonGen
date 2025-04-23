@@ -15,22 +15,6 @@ from src.constants.dataset import DatasetColumns
 from src.models.base_model import BaseModel
 
 
-def shift_tensor_batch(images, dx=0, dy=0, fill_value=0):
-    shifted = torch.roll(images, shifts=(dy, dx), dims=(2, 3))  # dims: H, W
-
-    if dy > 0:
-        shifted[:, :, :dy, :] = fill_value
-    elif dy < 0:
-        shifted[:, :, dy:, :] = fill_value
-
-    if dx > 0:
-        shifted[:, :, :, :dx] = fill_value
-    elif dx < 0:
-        shifted[:, :, :, dx:] = fill_value
-
-    return shifted
-
-
 class StableDiffusion(BaseModel):
     """
     A Stable Diffusion model wrapper that provides functionality for text-to-image synthesis,
@@ -46,6 +30,7 @@ class StableDiffusion(BaseModel):
         use_ema: bool = False,
         use_lora: bool = False,
         lora_rank: int | None = None,
+        use_image_shifting: bool = False,
     ) -> None:
         """
         Initializes the components of  StableDiffusion model.
@@ -139,6 +124,23 @@ class StableDiffusion(BaseModel):
 
         self.guidance_scale = guidance_scale
         self.resolution = 512
+        self.use_image_shifting = use_image_shifting
+
+    @staticmethod
+    def _shift_tensor_batch(images, dx=0, dy=0, fill_value=0):
+        shifted = torch.roll(images, shifts=(dy, dx), dims=(2, 3))  # dims: H, W
+
+        if dy > 0:
+            shifted[:, :, :dy, :] = fill_value
+        elif dy < 0:
+            shifted[:, :, dy:, :] = fill_value
+
+        if dx > 0:
+            shifted[:, :, :, :dx] = fill_value
+        elif dx < 0:
+            shifted[:, :, :, dx:] = fill_value
+
+        return shifted
 
     def train(self, mode: bool = True):
         """
@@ -472,11 +474,12 @@ class StableDiffusion(BaseModel):
     def get_reward_image(self, raw_images: torch.Tensor) -> torch.Tensor:
         reward_images = (raw_images / 2 + 0.5).clamp(0, 1)
 
-        shift_tensor_batch(
-            reward_images,
-            dx=random.randint(0, math.ceil(self.resolution / 224)),
-            dy=random.randint(0, math.ceil(self.resolution / 224)),
-        )
+        if self.use_image_shifting:
+            self._shift_tensor_batch(
+                reward_images,
+                dx=random.randint(0, math.ceil(self.resolution / 224)),
+                dy=random.randint(0, math.ceil(self.resolution / 224)),
+            )
 
         return self.reward_image_processor(reward_images)
 

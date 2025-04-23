@@ -1,4 +1,8 @@
+from collections import defaultdict
+from pathlib import Path
+
 import hydra
+import pandas as pd
 import torch
 from hydra.utils import instantiate
 from torchvision import transforms
@@ -26,56 +30,85 @@ def main(config):
     reward_image_processor = transforms.Compose(
         [
             transforms.Resize(224, interpolation=transforms.InterpolationMode.BICUBIC),
+            transforms.CenterCrop(224),
+            transforms.ToTensor(),
             transforms.Normalize(
                 (0.48145466, 0.4578275, 0.40821073),
                 (0.26862954, 0.26130258, 0.27577711),
             ),
         ]
     )
-
     with torch.no_grad():
         reward_models = [
             instantiate(reward_model_cfg, device=device).to(device)
             for reward_model_cfg in config.reward_models
         ]
+        reward_tables_mean = {}
+        reward_tables_std = {}
+        for reward_model in reward_models:
+            data_path_mean = f"{reward_model.model_suffix}_mean.csv"
+            data_path_std = f"{reward_model.model_suffix}_std.csv"
 
-        for path in [
-            "/home/jovyan/shares/SR006.nfs2/torchrik/refl_proj/HumanDiffusion/images_coco/image_refl_xl_v_25",
-        ]:
+            reward_tables_mean[data_path_mean] = defaultdict(dict)
+            reward_tables_std[data_path_std] = defaultdict(dict)
+
+            if Path(data_path_mean).exists():
+                reward_tables_mean[data_path_mean] |= pd.read_csv(
+                    data_path_mean, index_col=0
+                ).to_dict(orient="index")
+            if Path(data_path_std).exists():
+                reward_tables_std[data_path_std] |= pd.read_csv(
+                    data_path_std, index_col=0
+                ).to_dict(orient="index")
+
+        for path in config.images_paths:
+            step = int(path.split("_")[-1])
             dataset = instantiate(
                 config.datasets.test,
                 images_path=path,
                 all_models_with_tokenizer=reward_models,
                 dataset_split="test",
             )
+            dataset.image_process = reward_image_processor
             dataloader = instantiate(
                 config.dataloader.test,
                 dataset=dataset,
                 collate_fn=collate_fn,
             )
-            rewards = None
             for reward_model in reward_models:
+                rewards = None
                 for batch in tqdm(dataloader):
                     batch = move_batch_to_device(batch, device)
-                    raw_images = (batch["original_image"] / 2 + 0.5).clamp(0, 1)
-
+                    raw_images = batch["original_image"]
                     if rewards is None:
                         rewards = reward_model._get_reward(
                             batch=batch,
                             image=raw_images,
                         ).cpu()
-                        print(rewards)
                     else:
                         rewards = torch.cat(
                             [
                                 rewards,
                                 reward_model._get_reward(
                                     batch=batch,
-                                    image=reward_image_processor(raw_images),
+                                    image=raw_images,
                                 ).cpu(),
                             ]
                         )
-                print(reward_model.model_suffix, rewards.mean(), rewards.std())
+                print(config.run_name, step)
+                reward_tables_mean[f"{reward_model.model_suffix}_mean.csv"][step][
+                    config.run_name
+                ] = float(rewards.mean())
+                reward_tables_std[f"{reward_model.model_suffix}_std.csv"][step][
+                    config.run_name
+                ] = float(rewards.std())
+
+                for reward_tables in (reward_tables_mean, reward_tables_std):
+                    for reward_table_path in reward_tables:
+                        table = pd.DataFrame.from_dict(
+                            reward_tables[reward_table_path], orient="index"
+                        )
+                        table.to_csv(reward_table_path)
 
 
 if __name__ == "__main__":

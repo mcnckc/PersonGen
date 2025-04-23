@@ -115,6 +115,7 @@ ImageReward/
 *.jpg
 *.ipynb
 *.npz
+*.csv
 
 # editor, os cache directory
 .vscode/
