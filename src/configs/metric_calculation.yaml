@@ -1,8 +1,0 @@
-defaults:
-  - reward_models: all_rewards
-  - datasets: fid_coco
-  - dataloader: metric_calculation
-  - transforms: empty
-  - _self_
-device: 'cuda:0'
-images_paths: []

@@ -396,6 +396,18 @@ class StableDiffusion(BaseModel):
 
         return latents, noise_pred
 
+    def get_latents(self, batch_size: int, device: torch.device) -> torch.Tensor:
+        latent_resolution = int(self.resolution) // self.vae_scale_factor
+        return torch.randn(
+            (
+                batch_size,
+                self.unet.config.in_channels,
+                latent_resolution,
+                latent_resolution,
+            ),
+            device=device,
+        )
+
     def do_k_diffusion_steps(
         self,
         start_timestep_index: int,
@@ -433,16 +445,7 @@ class StableDiffusion(BaseModel):
             )
 
         if latents is None:
-            latent_resolution = int(self.resolution) // self.vae_scale_factor
-            latents = torch.randn(
-                (
-                    batch_size,
-                    self.unet.config.in_channels,
-                    latent_resolution,
-                    latent_resolution,
-                ),
-                device=device,
-            )
+            latents = self.get_latents(batch_size=batch_size, device=device)
 
         for timestep_index in range(start_timestep_index, end_timestep_index - 1):
             latents, _ = self.predict_next_latents(

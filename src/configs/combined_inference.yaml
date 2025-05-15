@@ -3,7 +3,7 @@ defaults:
   - reward_models: all_rewards
   - writer: inference_v2
   - datasets: inference_hps
-  - dataloader: inference_refl
+  - dataloader: inference_refl_fid
   - transforms: empty
   - _self_
 inferencer:

@@ -8,6 +8,7 @@ class AIGInferencer(CombinedGenerationInferencer):
     def run_inference(self):
         part_logs = {}
         for i, aig_p in enumerate(self.cfg_trainer.aig_ps):
+            self.global_image_index = 0
             self.aig_p = aig_p
             self.start_timestep_index = aig_p
 
@@ -31,9 +32,9 @@ class AIGInferencer(CombinedGenerationInferencer):
         self.model.set_timesteps(T, device=self.device)
         self.original_model.set_timesteps(T, device=self.device)
         batch_size = batch[DatasetColumns.tokenized_text.name].shape[0]
-        latents = torch.randn(
-            (batch_size, 4, 64, 64),
-            device=self.device,
+
+        latents = self.original_model.get_latents(
+            batch_size=batch_size, device=self.device
         )
 
         original_model_hid_state = self.original_model.get_encoder_hidden_states(
@@ -46,7 +47,9 @@ class AIGInferencer(CombinedGenerationInferencer):
         )
 
         for step_index in range(T):
-            scale = 1 - ((T - step_index) / T) ** self.aig_p
+            real_step = T - step_index
+            scale = 1 - ((T - real_step) / T) ** self.aig_p
+
             original_model_noise_pred = self.original_model.get_noise_prediction(
                 latents=latents,
                 timestep_index=step_index,
@@ -61,8 +64,8 @@ class AIGInferencer(CombinedGenerationInferencer):
                 do_classifier_free_guidance=False,
             )
 
-            noise_pred = (
-                original_model_noise_pred * (1 - scale) + model_noise_pred * scale
+            noise_pred = original_model_noise_pred * scale + model_noise_pred * (
+                1 - scale
             )
             latents = self.original_model.sample_next_latents(
                 latents=latents,

@@ -1,8 +1,8 @@
 - _target_: src.reward_models.HPS
 - _target_: src.reward_models.ClipScore
-- _target_: src.reward_models.ClipDiversity
+- _target_: src.reward_models.DinoDiversity
   images_per_batch: 5
-- _target_: src.reward_models.MPS
-  checkpoint_path: /home/jovyan/shares/SR006.nfs2/torchrik/refl_proj/cache/MPS_overall_checkpoint.pth
+#- _target_: src.reward_models.MPS
+#  checkpoint_path: null  # you should provide a path to MPS checkpoint in your system
 - _target_: src.reward_models.PickScore
 - _target_: src.reward_models.ImageReward

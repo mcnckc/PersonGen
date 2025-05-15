@@ -3,11 +3,11 @@ defaults:
   - reward_models: all_rewards
   - writer: inference_v2
   - datasets: inference_hps
-  - dataloader: inference_refl
+  - dataloader: inference_refl_fid
   - transforms: empty
   - _self_
 inferencer:
-  type: 'InferenceV3'
+  type: 'AIGInferencer'
   aig_ps: [1, 1.25, 1.5, 2, 3, 4, 5]
   end_timestep_index: 40
   device: auto
@@ -16,5 +16,3 @@ inferencer:
   from_pretrained: "saved/image_refl_0.01/checkpoint-epoch20.pth"
   do_classifier_free_guidance: False
   save_images_path: 'images_coco/temp'
-  original_model_gs: 7.5
-  model_gs: 7.5
