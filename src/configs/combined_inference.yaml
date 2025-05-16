@@ -13,7 +13,7 @@ inferencer:
   device: auto
   save_dir: "saved"
   seed: 42
-  from_pretrained: "saved/image_refl_0.01/checkpoint-epoch20.pth"
+  from_pretrained: # you should provide path to checkpoint
   do_classifier_free_guidance: False
   save_images_path: 'images_coco/refl_coco'
   original_model_gs: 7.5

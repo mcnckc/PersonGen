@@ -194,4 +194,3 @@ class DatasetWrapper(Dataset):
         assert (
             image_column is None or image_column in raw_dataset.column_names
         ), "image_column must be present in raw_dataset"
-        # TODO: add image validation
