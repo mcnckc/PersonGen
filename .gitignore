@@ -112,7 +112,6 @@ images_coco/
 fid_data/
 new_exps/
 ImageReward/
-*.jpg
 *.ipynb
 *.npz
 *.csv
