@@ -1,9 +1,8 @@
 # ImageReFL: Balancing Quality and Diversity in Human-Aligned Diffusion Models
 
-[//]: # (arxiv link)
 [//]: # (<a href="https://arxiv.org/abs/2505.20975"><img src="https://img.shields.io/badge/arXiv-2505.20975-b31b1b.svg" height=22.5></a>)
 
-[//]: # ([![License]&#40;https://img.shields.io/github/license/AIRI-Institute/al_toolbox&#41;]&#40;./LICENSE&#41;)
+[![License](https://img.shields.io/github/license/AIRI-Institute/al_toolbox)](./LICENSE)
 
 
 > Recent advances in diffusion models have led to impressive image generation capabilities, but aligning these models with human preferences remains challenging. Reward-based fine-tuning using models trained on human feedback improves alignment but often harms diversity, producing less varied outputs. In this work, we address this trade-off with two contributions. First, we introduce \textit{combined generation}, a novel sampling strategy that applies a reward-tuned diffusion model only in the later stages of the generation process, while preserving the base model for earlier steps. This approach mitigates early-stage overfitting and helps retain global structure and diversity. Second, we propose \textit{ImageReFL}, a fine-tuning method that improves image diversity with minimal loss in quality by training on real images and incorporating multiple regularizers, including diffusion and ReFL losses. Our approach outperforms conventional reward tuning methods on standard quality and diversity metrics. A user study further confirms that our method better balances human preference alignment and visual diversity.
@@ -12,7 +11,19 @@
   <img src="assets/algorithm.jpg" alt="Algorithm"/>
   <br>
 Comparison of ImageReFL with the standard approach.
+Unlike classical ReFL, ImageReFL incorporates real images to train the model to make significant changes during the final diffusion steps.
 </p>
+
+<p align="center">
+  <img src="assets/hps_xl.jpg" alt="Algorithm"/>
+  <br>
+Comparison of ImageReFL with ReFL and ReFL AIG baselines using SDXL trained on
+HPSv2.1.
+</p>
+
+## Updates
+
+- [??/??/2025] 🔥🔥🔥 ImageReFL release. Paper has been published on [Arxiv](https://arxiv.org/abs/TODO).
 
 ## Prerequisites
 You need following hardware and python version to run our method.
@@ -24,8 +35,8 @@ You need following hardware and python version to run our method.
 
 * Clone this repo:
 ```bash
-git clone https://github.com/ControlGenAI/HumanDiffusion.git
-cd HumanDiffusion
+git clone https://github.com/ControlGenAI/ImageReFL.git
+cd ImageReFL
 ```
 
 * Create Conda environment:
@@ -109,9 +120,3 @@ If you use this code or our findings for your research, please cite our paper:
       url={https://arxiv.org/abs/TODO},
 }
 ```
-
-<p align="center">
-  <img src="assets/hps_xl.jpg" alt="Algorithm"/>
-  <br>
-Image example
-</p>
