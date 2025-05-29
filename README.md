@@ -1,6 +1,6 @@
 # ImageReFL: Balancing Quality and Diversity in Human-Aligned Diffusion Models
 
-[//]: # (<a href="https://arxiv.org/abs/2505.20975"><img src="https://img.shields.io/badge/arXiv-2505.20975-b31b1b.svg" height=22.5></a>)
+<a href="https://arxiv.org/abs/2505.22569"><img src="https://img.shields.io/badge/arXiv-2505.22569-b31b1b.svg" height=22.5></a>
 
 [![License](https://img.shields.io/github/license/AIRI-Institute/al_toolbox)](./LICENSE)
 
@@ -23,7 +23,7 @@ HPSv2.1.
 
 ## Updates
 
-- [??/??/2025] 🔥🔥🔥 ImageReFL release. Paper has been published on [Arxiv](https://arxiv.org/abs/TODO).
+- [29/05/2025] 🔥🔥🔥 ImageReFL release. Paper has been published on [Arxiv](https://arxiv.org/abs/2505.22569).
 
 ## Prerequisites
 You need following hardware and python version to run our method.
@@ -110,13 +110,13 @@ The repository has used several codebases:
 
 If you use this code or our findings for your research, please cite our paper:
 ```
-@misc{ayupov2025dreamboothdpoimprovingpersonalizedgeneration,
+@misc{sorokin2025imagereflbalancingqualitydiversity,
       title={ImageReFL: Balancing Quality and Diversity in Human-Aligned Diffusion Models},
       author={Dmitrii Sorokin and Maksim Nakhodnov and Andrey Kuznetsov and Aibek Alanov},
       year={2025},
-      eprint={TODO},
+      eprint={2505.22569},
       archivePrefix={arXiv},
       primaryClass={cs.CV},
-      url={https://arxiv.org/abs/TODO},
+      url={https://arxiv.org/abs/2505.22569},
 }
 ```
