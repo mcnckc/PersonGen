@@ -2,6 +2,11 @@
 
 <a href="https://arxiv.org/abs/2505.22569"><img src="https://img.shields.io/badge/arXiv-2505.22569-b31b1b.svg" height=22.5></a>
 
+
+<a href="https://huggingface.co/collections/ControlGenAI/imagerefl-683ed170b6af68d53af50b99">
+  <img src="https://img.shields.io/badge/HuggingFace-ImageReFL_Models-yellow.svg" height="22.5">
+</a>
+
 [![License](https://img.shields.io/github/license/AIRI-Institute/al_toolbox)](./LICENSE)
 
 
@@ -97,6 +102,22 @@ To run inference with a trained model and compute image quality metrics, use:
 
 ```bash
 HYDRA_FULL_ERROR=1 python inference.py inferencer.from_pretrained="saved/<your_train_run_name>/checkpoint-epoch20.pth"
+```
+
+### Image Inference
+
+You can also use our pre-trained model from Hugging Face for image generation. Example usage:
+
+```
+from diffusers import DiffusionPipeline
+
+pipe = DiffusionPipeline.from_pretrained(
+    "ControlGenAI/ImageReFL_HPS_SD",
+    trust_remote_code=True
+).to(device)
+
+prompt = "Astronaut in a jungle, cold color palette, muted colors, detailed, 8k"
+image = pipe(prompt).images[0]
 ```
 
 ## References & Acknowledgments
