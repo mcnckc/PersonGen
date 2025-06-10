@@ -1,13 +1,14 @@
 # ImageReFL: Balancing Quality and Diversity in Human-Aligned Diffusion Models
 
 <a href="https://arxiv.org/abs/2505.22569"><img src="https://img.shields.io/badge/arXiv-2505.22569-b31b1b.svg" height=22.5></a>
-
-
 <a href="https://huggingface.co/collections/ControlGenAI/imagerefl-683ed170b6af68d53af50b99">
-  <img src="https://img.shields.io/badge/HuggingFace-ImageReFL_Models-yellow.svg" height="22.5">
+  <img src="https://huggingface.co/datasets/huggingface/badges/resolve/main/open-in-hf-spaces-md.svg" height=22.5>
 </a>
-
+<a href="https://colab.research.google.com/drive/16AqdG4bIzE6ND4Us-1a12stlcPgxxF7m?usp=sharing">
+  <img src="https://colab.research.google.com/assets/colab-badge.svg" height=22.5>
+</a>
 [![License](https://img.shields.io/github/license/AIRI-Institute/al_toolbox)](./LICENSE)
+
 
 
 > Recent advances in diffusion models have led to impressive image generation capabilities, but aligning these models with human preferences remains challenging. Reward-based fine-tuning using models trained on human feedback improves alignment but often harms diversity, producing less varied outputs. In this work, we address this trade-off with two contributions. First, we introduce \textit{combined generation}, a novel sampling strategy that applies a reward-tuned diffusion model only in the later stages of the generation process, while preserving the base model for earlier steps. This approach mitigates early-stage overfitting and helps retain global structure and diversity. Second, we propose \textit{ImageReFL}, a fine-tuning method that improves image diversity with minimal loss in quality by training on real images and incorporating multiple regularizers, including diffusion and ReFL losses. Our approach outperforms conventional reward tuning methods on standard quality and diversity metrics. A user study further confirms that our method better balances human preference alignment and visual diversity.
