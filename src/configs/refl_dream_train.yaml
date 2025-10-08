@@ -1,6 +1,6 @@
 defaults:
   - model: stable_diffusion_15
-  - reward_models: hps
+  - reward_models: clip_ti
   - writer: train
   - datasets: dream
   - dataloader: refl

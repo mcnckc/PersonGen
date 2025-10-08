@@ -6,3 +6,4 @@ from src.reward_models.hps import HPS
 from src.reward_models.image_reward import ImageReward
 from src.reward_models.mps_score import MPS
 from src.reward_models.pick_score import PickScore
+from src.reward_models.clip_ti import ClipTI

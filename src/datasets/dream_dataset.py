@@ -45,6 +45,6 @@ class DreamDataset(Dataset):
             if self.transform:
                 image = self.transform(image)
             res["images"].append(image)
-        
+        res["src_images"] = torch.stack(res["images"], dim=0)
         return res
     
