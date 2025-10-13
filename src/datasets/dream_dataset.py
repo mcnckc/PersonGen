@@ -5,12 +5,12 @@ from torch.utils.data import Dataset
 from torchvision import transforms
 
 class DreamDataset(Dataset):
-    def __init__(self, img_dir, target_prompt, all_models_with_tokenizers, transform=None, target_size=(512, 512)):
+    def __init__(self, img_dir, target_prompt, all_models_with_tokenizer, transform=None, target_size=(512, 512)):
         self.img_dir = img_dir
         self.transform = transform
         self.target_size = target_size
         self.target_prompt = target_prompt
-        self.all_models_with_tokenizers = all_models_with_tokenizers
+        self.all_models_with_tokenizer = all_models_with_tokenizer
         if self.transform is None:
             self.transform = transforms.Compose([
                 transforms.Resize(self.target_size),
