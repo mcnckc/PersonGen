@@ -19,7 +19,7 @@ class WandBWriter:
         entity=None,
         run_id=None,
         run_name=None,
-        mode="online",
+        mode="offline",
         **kwargs,
     ):
         """

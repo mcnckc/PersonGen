@@ -2,6 +2,6 @@ _target_: src.logger.WandBWriter
 project_name: "pgen"
 entity: null
 run_name: "first run"
-mode: "online"
+mode: "offline"
 log_checkpoints: False # set to True if you want to log save_dir with checkpoints to W&B
 id_length: 8 # length of the run_id
