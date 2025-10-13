@@ -1,2 +1,3 @@
 train_model:
   _target_: src.reward_models.ClipTI
+val_models:
