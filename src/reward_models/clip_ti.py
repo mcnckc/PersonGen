@@ -40,6 +40,9 @@ class ClipTI(BaseModel):
         tg_prompt = self.model.encode_text(batch[
             f"{DatasetColumns.tokenized_text.name}_{self.model_suffix}"
         ])
+        print('Shapes:')
+        print(image, image.shape)
+        print(batch["src_images"], len(batch["src_images"]), batch["src_images"][0].shape)
         tg_image = self.model.encode_image(image)
         src_images = self.model.encode_image(batch["src_images"])
 
