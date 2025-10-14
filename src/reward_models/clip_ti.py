@@ -37,7 +37,7 @@ class ClipTI(BaseModel):
         self.tg_prompt = self.model.encode_text(clip.tokenize(
             clip_prompt,
             truncate=True,
-        ))
+        ).to(device))
         self.tg_prompt = torch.nn.functional.normalize(self.tg_prompt, dim=-1)
         self.device = device
 
