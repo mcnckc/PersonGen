@@ -493,7 +493,7 @@ class BaseTrainer:
             mode (str): train or inference. Defines which logging
                 rules to apply.
         """
-        
+        print('logging image', batch["image"].shape, batch["image"])
         self.writer.add_image(
             image_name=mode,
             image=batch["image"].squeeze(dim=0),
