@@ -20,12 +20,13 @@ class ClipTI(BaseModel):
 
         model, transform = clip.load(MODEL_NAME, device=device, jit=False)
         self.model = model
+        self.clip_resolution = 224
         self.tensor_preproc = transforms.Compose(
             [
                 transforms.Resize(
-                    self.resolution, interpolation=transforms.InterpolationMode.BICUBIC
+                    self.clip_resolution, interpolation=transforms.InterpolationMode.BICUBIC
                 ),
-                transforms.CenterCrop(self.resolution),
+                transforms.CenterCrop(self.clip_resolution),
                 transforms.Normalize(
                     (0.48145466, 0.4578275, 0.40821073),
                     (0.26862954, 0.26130258, 0.27577711),
