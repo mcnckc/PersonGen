@@ -495,7 +495,7 @@ class BaseTrainer:
         """
         self.writer.add_image(
             image_name=mode,
-            image=batch["image"],
+            image=batch["image"].squeeze(dim=0),
         )
 
     def _log_scalars(self, metric_tracker: MetricTracker):
