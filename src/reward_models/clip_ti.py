@@ -34,13 +34,15 @@ class ClipTI(BaseModel):
             ]
         )
         print('VIT32 transform', transform)
-        self.tg_prompt = self.model.encode_text(clip.tokenize(
-            clip_prompt,
-            truncate=True,
-        ).detach().to(device))
-        print(self.tg_prompt.requires_grad)
-        self.tg_prompt.requires_grad_(False)
+        with torch.no_grad():
+            self.tg_prompt = self.model.encode_text(clip.tokenize(
+                clip_prompt,
+                truncate=True,
+            ).to(device))
+            
+        print("Grad1:", self.tg_prompt.requires_grad)
         self.tg_prompt = torch.nn.functional.normalize(self.tg_prompt, dim=-1)
+        print("Grad2:", self.tg_prompt.requires_grad)
         self.device = device
 
     def tokenize(self, caption: str) -> tp.Dict[str, torch.Tensor]:
