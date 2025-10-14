@@ -126,7 +126,7 @@ class BaseTrainer:
             self._from_pretrained(config.trainer.get("from_pretrained"))
 
     def _get_train_loss_names(self):
-        train_loss_names = [self.train_reward_model.model_suffix, "loss"]
+        train_loss_names = [self.train_reward_model.model_suffix] + self.cfg_trainer.train_loss_names
         return train_loss_names
 
     def _get_eval_loss_names(self):
@@ -269,7 +269,7 @@ class BaseTrainer:
 
                 self.train_metrics.update("grad_norm", self._get_grad_norm())
 
-                self.optimizer.zero_grad()
+                self.optimizer.zero_grad() 
 
                 # log current results
                 if batch_idx % self.log_step == 0:

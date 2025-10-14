@@ -19,6 +19,7 @@ trainer:
   log_step: 5
   n_epochs: 20
   epoch_len: 100
+  train_loss_names: ['loss', 'clip_t', 'clip_i']
   resume_from: null # null or path to the checkpoint dir with *.pth and config.yaml
   device: auto # device name or "auto"
   override: True # if True, will override the previous run with the same name

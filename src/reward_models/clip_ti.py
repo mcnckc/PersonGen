@@ -70,4 +70,6 @@ class ClipTI(BaseModel):
         print(f"CLIP SHAPES: T:{clipT.shape} I:{clipI.shape}")
         clipT = clipT.mean()
         clipI = clipI.mean()
+        batch["clip_t"] = clipT
+        batch["clip_i"] = clipI
         return clipT * clipI
