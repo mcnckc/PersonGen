@@ -29,6 +29,6 @@ trainer:
   save_dir: "saved"
   seed: 1
   mse_loss_scale: 0
-  do_classifier_free_guidance: False
+  do_classifier_free_guidance: True
   detach_main_path: False
   calculate_initial_model_metrics: False
