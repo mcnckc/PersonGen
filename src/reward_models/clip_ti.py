@@ -44,8 +44,9 @@ class ClipTI(BaseModel):
         print(image, image.shape)
         print(batch["src_images"], len(batch["src_images"]), batch["src_images"][0].shape)
         tg_image = self.model.encode_image(image)
+        print("TG EMBEDDING SHAPE", tg_image.shape)
         src_images = self.model.encode_image(batch["src_images"])
-
+        print("SRC batch SHAPE", src_image.shape)
         tg_prompt = torch.nn.functional.normalize(tg_prompt, dim=-1)
         tg_image = torch.nn.functional.normalize(tg_image, dim=-1)
         src_images = torch.nn.functional.normalize(src_images, dim=-1)
