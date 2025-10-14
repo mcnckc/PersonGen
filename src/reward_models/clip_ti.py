@@ -38,6 +38,8 @@ class ClipTI(BaseModel):
             clip_prompt,
             truncate=True,
         ).to(device))
+        print(self.tg_prompt.requires_grad)
+        self.tg_prompt.requires_grad_(False)
         self.tg_prompt = torch.nn.functional.normalize(self.tg_prompt, dim=-1)
         self.device = device
 
