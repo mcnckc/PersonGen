@@ -493,13 +493,12 @@ class BaseTrainer:
             mode (str): train or inference. Defines which logging
                 rules to apply.
         """
-        pass
-        """
+        
         self.writer.add_image(
             image_name=mode,
             image=batch["image"].squeeze(dim=0),
         )
-        """
+        
 
     def _log_scalars(self, metric_tracker: MetricTracker):
         """

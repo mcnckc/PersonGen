@@ -1,7 +1,7 @@
 defaults:
   - model: stable_diffusion_15_local
   - reward_models: clip_ti
-  - writer: train
+  - writer: comet
   - datasets: dream
   - dataloader: dream
   - transforms: empty
