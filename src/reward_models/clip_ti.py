@@ -20,6 +20,7 @@ class ClipTI(BaseModel):
         model, transform = clip.load(MODEL_NAME, device=device, jit=False)
         self.model = model
         self.transform = transform
+        print('VIT32 transform', self.transform)
         self.device = device
 
     def tokenize(self, caption: str) -> tp.Dict[str, torch.Tensor]:
