@@ -60,14 +60,14 @@ class ClipTI(BaseModel):
         tg_image = self.model.encode_image(self.tensor_preproc(image))
         print("TG EMBEDDING SHAPE", tg_image.shape)
         src_images = self.model.encode_image(self.tensor_preproc(batch["src_images"]))
-        print("SRC batch SHAPE", src_image.shape)
+        print("SRC batch SHAPE", src_images.shape)
         tg_prompt = torch.nn.functional.normalize(tg_prompt, dim=-1)
         tg_image = torch.nn.functional.normalize(tg_image, dim=-1)
         src_images = torch.nn.functional.normalize(src_images, dim=-1)
-
+        print("TG prompt shape", tg_prompt.shape)
         clipT = tg_prompt @ tg_image.T
         clipI = tg_image @ src_images.T
-        print(f"CLIP SHAPES: T:{clipT} I:{clipI}")
+        print(f"CLIP SHAPES: T:{clipT.shape} I:{clipI.shape}")
         clipT = clipT.mean()
         clipI = clipI.mean()
         return clipT * clipI
