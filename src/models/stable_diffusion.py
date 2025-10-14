@@ -101,6 +101,8 @@ class StableDiffusion(BaseModel):
             )
             self.unet.add_adapter(unet_lora_config)
 
+        self.reward_image_processor = None
+        """
         self.reward_image_processor = transforms.Compose(
             [
                 transforms.Resize(
@@ -113,7 +115,7 @@ class StableDiffusion(BaseModel):
                 ),
             ]
         )
-
+        """
         # reproduce StableDiffusionPipeline
         self.vae_scale_factor = 2 ** (len(self.vae.config.block_out_channels) - 1)
         self.inference_image_processor = VaeImageProcessor(
@@ -483,8 +485,10 @@ class StableDiffusion(BaseModel):
                 dx=random.randint(0, math.ceil(self.resolution / 224)),
                 dy=random.randint(0, math.ceil(self.resolution / 224)),
             )
-
-        return self.reward_image_processor(reward_images)
+        if self.reward_image_processor is not None:
+            return self.reward_image_processor(reward_images)
+        else:
+            return reward_images
 
     def sample_image(
         self,
