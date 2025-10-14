@@ -11,7 +11,7 @@ from src.metrics.tracker import MetricTracker
 from src.models import StableDiffusion
 from src.reward_models import BaseModel
 from src.utils.io_utils import ROOT_PATH
-
+from torchvision.transforms import functional as F
 
 class BaseTrainer:
     """
@@ -493,10 +493,10 @@ class BaseTrainer:
             mode (str): train or inference. Defines which logging
                 rules to apply.
         """
-        print('logging image', batch["image"].shape, batch["image"])
+        #print('logging image', batch["image"].shape, batch["image"])
         self.writer.add_image(
             image_name=mode,
-            image=batch["image"].squeeze(dim=0).to(torch.float16).cpu(),
+            image=F.to_pil_image(batch["image"].squeeze(dim=0).cpu()),
         )
         
 
