@@ -5,6 +5,7 @@ import torch
 
 from src.constants.dataset import DatasetColumns
 from src.reward_models.base_model import BaseModel
+from torchvision import transforms
 
 MODEL_NAME = "ViT-B/32"
 
@@ -19,7 +20,18 @@ class ClipTI(BaseModel):
 
         model, transform = clip.load(MODEL_NAME, device=device, jit=False)
         self.model = model
-        self.transform = transform
+        self.tensor_preproc = transforms.Compose(
+            [
+                transforms.Resize(
+                    self.resolution, interpolation=transforms.InterpolationMode.BICUBIC
+                ),
+                transforms.CenterCrop(self.resolution),
+                transforms.Normalize(
+                    (0.48145466, 0.4578275, 0.40821073),
+                    (0.26862954, 0.26130258, 0.27577711),
+                ),
+            ]
+        )
         print('VIT32 transform', self.transform)
         self.device = device
 
@@ -44,9 +56,9 @@ class ClipTI(BaseModel):
         print('Shapes:')
         print(image, image.shape)
         print(batch["src_images"], len(batch["src_images"]), batch["src_images"][0].shape)
-        tg_image = self.model.encode_image(self.transform(image))
+        tg_image = self.model.encode_image(self.tensor_preproc(image))
         print("TG EMBEDDING SHAPE", tg_image.shape)
-        src_images = self.model.encode_image(self.transform(batch["src_images"]))
+        src_images = self.model.encode_image(self.tensor_preproc(batch["src_images"]))
         print("SRC batch SHAPE", src_image.shape)
         tg_prompt = torch.nn.functional.normalize(tg_prompt, dim=-1)
         tg_image = torch.nn.functional.normalize(tg_image, dim=-1)
