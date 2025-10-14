@@ -13,7 +13,7 @@ MODEL_SUFFIX = "ClipTI"
 
 
 class ClipTI(BaseModel):
-    def __init__(self, device: torch.device):
+    def __init__(self, device: torch.device, clip_prompt: str):
         super().__init__(
             model_suffix=MODEL_SUFFIX, reward_scale_factor=1, reward_offset=0
         )
@@ -34,6 +34,11 @@ class ClipTI(BaseModel):
             ]
         )
         print('VIT32 transform', transform)
+        self.tg_prompt = self.model.encode_text(clip.tokenize(
+            clip_prompt,
+            truncate=True,
+        ))
+        self.tg_prompt = torch.nn.functional.normalize(self.tg_prompt, dim=-1)
         self.device = device
 
     def tokenize(self, caption: str) -> tp.Dict[str, torch.Tensor]:
@@ -51,15 +56,11 @@ class ClipTI(BaseModel):
         batch: tp.Dict[str, torch.Tensor],
         image: torch.Tensor,
     ) -> torch.Tensor:
-        tg_prompt = self.model.encode_text(batch[
-            f"{DatasetColumns.tokenized_text.name}_{self.model_suffix}"
-        ])
         tg_image = self.model.encode_image(self.tensor_preproc(image))
         src_images = self.model.encode_image(self.tensor_preproc(batch["src_images"]))
-        tg_prompt = torch.nn.functional.normalize(tg_prompt, dim=-1)
         tg_image = torch.nn.functional.normalize(tg_image, dim=-1)
         src_images = torch.nn.functional.normalize(src_images, dim=-1)
-        clipT = tg_prompt @ tg_image.T
+        clipT = self.tg_prompt @ tg_image.T
         clipI = tg_image @ src_images.T
         clipT = clipT.mean()
         clipI = clipI.mean()

@@ -1,3 +1,4 @@
 train_model:
   _target_: src.reward_models.ClipTI
+  clip_prompt: "A photo of a dog on the beach"
 val_models: []

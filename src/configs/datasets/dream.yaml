@@ -1,4 +1,4 @@
 train:
   _target_: src.datasets.DreamDataset
   img_dir: ""
-  target_prompt: "a photo of a dog"
+  target_prompt: "A photo of sks dog on the beach"
