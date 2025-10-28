@@ -52,7 +52,7 @@ class ClipTI(BaseModel):
                     src_image_paths.append(os.path.join(src_img_dir, filename))
             if not src_image_paths:
                 raise ValueError(f"Directory {src_img_dir} has no images")
-            for img_path in self.src_image_paths:
+            for img_path in src_image_paths:
                 image = Image.open(img_path)
                 src_images.append(transform(image))
             src_images = torch.stack(src_images, dim=0).to(device)
