@@ -57,7 +57,8 @@ class ClipTI(BaseModel):
                 src_images.append(transform(image))
             src_images = torch.stack(src_images, dim=0).to(device)
             self.src_images = self.model.encode_image(src_images)
-            self.src_images = torch.nn.functional.normalize(src_images, dim=-1)
+
+            self.src_images = torch.nn.functional.normalize(self.src_images, dim=-1)
         
 
     def tokenize(self, caption: str) -> tp.Dict[str, torch.Tensor]:
