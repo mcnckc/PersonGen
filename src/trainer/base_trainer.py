@@ -200,7 +200,7 @@ class BaseTrainer:
         batch = self.transform_batch(batch)
 
         if self.is_train:
-            with autocast(dtype=torch.float16):
+            with autocast(dtype=torch.bfloat16):
                 batch["loss"] = 0
                 self._sample_image_train(batch=batch)
                 self.train_reward_model.score_grad(
@@ -209,7 +209,7 @@ class BaseTrainer:
                 batch["loss"] = batch["loss"] * self.cfg_trainer.loss_scale
             self.scaler.scale(batch["loss"]).backward()
         else:
-            with autocast(dtype=torch.float16):
+            with autocast(dtype=torch.bfloat16):
                 self._sample_image_eval(batch=batch)
                 self.train_reward_model.score(
                     batch=batch,
