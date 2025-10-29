@@ -8,3 +8,4 @@ val_models:
     src_img_dir: "dog"
     placeholder_token: "sks"
     class_name: "dog"
+    prompts_path: "dreambench-prompts"

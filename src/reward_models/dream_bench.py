@@ -597,7 +597,7 @@ class DreamBench(BaseModel):
             model_suffix=MODEL_SUFFIX, reward_scale_factor=1, reward_offset=0
         )
         self.device = device
-        self.db = DreamBenchPPEvaluator(device, config)
+        self.db = DreamBenchPPEvaluator(device, config, prompts_path=config.prompts_path)
         self.tracked_metrics = {
             'source_ClipI':'real_image_similarity',
             'source_Dino':'dino_real_image_similarity',
