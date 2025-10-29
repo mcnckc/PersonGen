@@ -15,11 +15,13 @@ comet_ml
 hydra-core
 hpsv2
 pytorch-fid
-
+qwen_vl_utils
+regex
+Requests
 black
 isort
 pre-commit
-
+vllm
 lpips
 
 git+https://github.com/openai/CLIP.git

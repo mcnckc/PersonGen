@@ -3,9 +3,6 @@ import typing as tp
 import os
 import warnings
 import requests
-import traceback
-from pathlib import Path
-from collections import defaultdict
 from typing import List, Optional, Dict, Tuple, Union
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from torchvision.transforms import functional as F
@@ -16,8 +13,6 @@ import tqdm.autonotebook as tqdm
 import clip
 
 import numpy as np
-import pandas as pd
-from sklearn.metrics import mean_squared_error
 
 import torch
 import torch.backends.cuda
