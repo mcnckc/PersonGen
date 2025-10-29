@@ -1,5 +1,10 @@
 train_model:
   _target_: src.reward_models.ClipTI
-  clip_prompt: "A photo of a dog on the beach"
   src_img_dir: "dog"
-val_models: []
+  placeholder_token: "sks"
+  class_name: "dog"
+val_models:
+  - _target_: src.reward_models.DreamBench
+    src_img_dir: "dog"
+    placeholder_token: "sks"
+    class_name: "dog"

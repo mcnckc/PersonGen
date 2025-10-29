@@ -14,7 +14,7 @@ MODEL_SUFFIX = "ClipTI"
 
 
 class ClipTI(BaseModel):
-    def __init__(self, device: torch.device, clip_prompt: str, src_img_dir: str):
+    def __init__(self, device: torch.device, config):
         super().__init__(
             model_suffix=MODEL_SUFFIX, reward_scale_factor=1, reward_offset=0
         )
@@ -35,7 +35,13 @@ class ClipTI(BaseModel):
                 ),
             ]
         )
-        print('VIT32 transform', transform)
+        clean_label = (
+            config.target_prompt
+            .replace('{0} {1}'.format(config.placeholder_token, config.class_name), '{0}')
+            .replace('{0}'.format(config.placeholder_token), '{0}')
+        )
+        clip_prompt = clean_label.format(config.class_name)
+        print(f"TG prompt {config.target_prompt} clip prompt: {clip_prompt}")
         with torch.no_grad():
             self.tg_prompt = self.model.encode_text(clip.tokenize(
                 clip_prompt,
@@ -46,12 +52,12 @@ class ClipTI(BaseModel):
             src_image_paths = []
             src_images = []
             valid_extensions = {'.jpg', '.jpeg', '.png'}
-            for filename in os.listdir(src_img_dir):
+            for filename in os.listdir(config.src_img_dir):
                 ext = os.path.splitext(filename)[1].lower()
                 if ext in valid_extensions:
-                    src_image_paths.append(os.path.join(src_img_dir, filename))
+                    src_image_paths.append(os.path.join(config.src_img_dir, filename))
             if not src_image_paths:
-                raise ValueError(f"Directory {src_img_dir} has no images")
+                raise ValueError(f"Directory {config.src_img_dir} has no images")
             for img_path in src_image_paths:
                 image = Image.open(img_path)
                 src_images.append(transform(image))

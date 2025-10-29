@@ -132,7 +132,7 @@ class BaseTrainer:
     def _get_eval_loss_names(self):
         evaluation_loss_names = [
             reward_model.model_suffix for reward_model in self.val_reward_models
-        ]
+        ] + self.cfg_trainer.eval_loss_names
         evaluation_loss_names.append(self.train_reward_model.model_suffix)
         return evaluation_loss_names
 
