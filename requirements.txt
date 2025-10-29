@@ -1,5 +1,4 @@
 accelerate
-clip
 datasets
 diffusers>=0.16.0
 torch
