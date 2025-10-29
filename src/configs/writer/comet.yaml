@@ -1,4 +1,5 @@
 _target_: src.logger.CometMLWriter
 project_name: "pgen"
 run_name: "cfg 6.5"
+log_checkpoints: False
 id_length: 8 # length of the run_id
