@@ -6,6 +6,8 @@ dependencies:
   - python=3.12
   - pandas
   - numpy
+  - datasets
+  - av
   - pip
   - pip:
       - -r requirements.txt
