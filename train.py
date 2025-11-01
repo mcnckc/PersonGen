@@ -40,7 +40,8 @@ def main(config):
         model.ema_unet.to(device)
 
     # build reward models
-    config.reward_models.train_model["target_prompt"] = config.datasets.target_prompt
+    config.reward_models.train_model["target_prompt"] = config.datasets.train.target_prompt
+    print(config.reward_models.train_model.target_prompt)
     train_reward_model = instantiate(
         config.reward_models["train_model"], device=device
     ).to(device)
@@ -48,7 +49,7 @@ def main(config):
 
     val_reward_models = []
     for reward_model_config in config.reward_models["val_models"]:
-        reward_model_config["target_prompt"] = config.datasets.target_prompt
+        reward_model_config["target_prompt"] = config.datasets.train.target_prompt
         reward_model = instantiate(reward_model_config, device=device).to(device)
         reward_model.requires_grad_(False)
         val_reward_models.append(reward_model)
