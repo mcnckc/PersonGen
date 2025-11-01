@@ -40,6 +40,8 @@ def main(config):
         model.ema_unet.to(device)
 
     # build reward models
+    print(type(config))
+    print(config)
     config.reward_models.train_model.target_prompt = config.datasets.train.target_prompt
     print(config.reward_models.train_model.target_prompt)
     train_reward_model = instantiate(
