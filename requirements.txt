@@ -13,6 +13,7 @@ wandb
 comet_ml
 hydra-core
 hpsv2
+peft
 pytorch-fid
 qwen_vl_utils
 regex
