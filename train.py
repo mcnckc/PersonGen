@@ -5,6 +5,7 @@ import torch
 from hydra.utils import instantiate
 from omegaconf import OmegaConf
 from torch.cuda.amp import GradScaler
+from omegaconf import open_dict
 
 from src.constants.trainer import TRAINER_NAME_TO_CLASS
 from src.datasets.data_utils import get_dataloaders
@@ -40,8 +41,9 @@ def main(config):
         model.ema_unet.to(device)
 
     # build reward models
-    config.reward_models.train_model = OmegaConf.merge(config.reward_models.train_model,
-                 {"target_prompt": config.datasets.train.target_prompt})
+    with open_dict(config.reward_models.train_model):
+        config.reward_models.train_model = OmegaConf.merge(config.reward_models.train_model,
+                    {"target_prompt": config.datasets.train.target_prompt})
     print(config.reward_models.train_model.target_prompt)
     train_reward_model = instantiate(
         config.reward_models["train_model"], device=device
@@ -50,9 +52,9 @@ def main(config):
 
     val_reward_models = []
     for reward_model_config in config.reward_models["val_models"]:
-        reward_model_config = OmegaConf.merge(reward_model_config, 
-                                            {"target_prompt": config.datasets.train.target_prompt})
-        reward_model_config.target_prompt = config.datasets.train.target_prompt
+        with open_dict(reward_model_config):
+            reward_model_config = OmegaConf.merge(reward_model_config, 
+                                                {"target_prompt": config.datasets.train.target_prompt})
         reward_model = instantiate(reward_model_config, device=device).to(device)
         reward_model.requires_grad_(False)
         val_reward_models.append(reward_model)
