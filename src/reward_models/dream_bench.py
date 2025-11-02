@@ -193,6 +193,8 @@ class ExpEvaluator:
     @torch.no_grad()
     def _get_image_features(self, images, resolution=None):
         # noinspection PyPep8Naming
+        print(type(images[0]))
+        print(images)
         if type(images[0]) is Image:
             PIL_images = images
         else:
