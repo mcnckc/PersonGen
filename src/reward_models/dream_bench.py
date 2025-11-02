@@ -165,7 +165,7 @@ class ExpEvaluator:
         if not src_image_paths:
             raise ValueError(f"Directory {src_img_dir} has no images")
         for img_path in src_image_paths:
-            src_images.append(Image.open(img_path))
+            src_images.append(PIL.Image.open(img_path))
         return src_images
     
     @staticmethod
