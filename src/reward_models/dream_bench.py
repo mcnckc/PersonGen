@@ -191,13 +191,12 @@ class ExpEvaluator:
             )].mean().item(), similarity_matrix.cpu().numpy().tolist()
     
     @torch.no_grad()
-    def _get_image_features(self, images, resolution=None):
+    def _get_image_features(self, PIL_images, resolution=None):
         # noinspection PyPep8Naming
         #print(type(images[0]))
         #print(images)
         
-        PIL_images = images
-        
+        images = [np.asarray(image) for image in PIL_images]
 
         dino_images_features = self.evaluator.get_dino_image_features(PIL_images)
 
@@ -213,10 +212,10 @@ class ExpEvaluator:
         return images_features, dino_images_features
 
     @torch.no_grad()
-    def __call__(self, images, verbose=False):
+    def __call__(self, PIL_images, verbose=False):
         results = {}
 
-        images_features, dino_images_features = self._get_image_features(images)
+        images_features, dino_images_features = self._get_image_features(PIL_images)
 
         results['image_similarities'], results['image_similarities_mx'] = (
             self._calc_similarity(self.train_images_features, images_features)
