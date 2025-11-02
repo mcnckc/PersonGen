@@ -47,6 +47,8 @@ class CLIPEvaluator(object):
             clip_preprocess.transforms[:2] +  # to match CLIP input scale assumptions
             clip_preprocess.transforms[4:]    # + skip convert PIL to tensor
         )
+        print(self.preprocess)
+        print(clip_preprocess)
         for transform in self.preprocess.transforms:
             if isinstance(transform, transforms.Resize):
                 transform.antialias = False
