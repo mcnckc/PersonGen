@@ -206,6 +206,10 @@ class ExpEvaluator:
                 np.array(image.resize((resolution, resolution), resample=PIL.Image.BICUBIC))
                 for image in PIL_images
             ]
+        print(images)
+        print(images[0])
+        print(type(images[0]))
+        print(images[0].shape)
         images = self._images_to_tensor(images)
         images_features = self.evaluator.get_image_features(images)
 
