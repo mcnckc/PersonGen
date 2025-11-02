@@ -52,8 +52,8 @@ def main(config):
 
     val_reward_models = []
     for reward_model_config in config.reward_models["val_models"]:
-        with open_dict(reward_model_config):
-            reward_model_config = OmegaConf.merge(reward_model_config, 
+        with open_dict(reward_model_config.config):
+            reward_model_config.config = OmegaConf.merge(reward_model_config.config, 
                                                 {"target_prompt": config.datasets.train.target_prompt})
         reward_model = instantiate(reward_model_config, device=device).to(device)
         reward_model.requires_grad_(False)
