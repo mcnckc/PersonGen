@@ -64,6 +64,11 @@ class CLIPEvaluator(object):
     def encode_images(self, images: torch.Tensor) -> torch.Tensor:
         images = self.preprocess(images).to(self.device)
         return self.model.encode_image(images)
+    
+    @torch.no_grad()
+    def encode_pil_images(self, images: torch.Tensor) -> torch.Tensor:
+        images = torch.stack([self.clip_preprocess(image).to(self.device) for image in images], dim=0)
+        return self.model.encode_image(images)
 
     def get_text_features(self, text: str, norm: bool = True) -> torch.Tensor:
 
@@ -75,6 +80,13 @@ class CLIPEvaluator(object):
             text_features /= text_features.norm(dim=-1, keepdim=True)
 
         return text_features
+    
+    def get_pil_image_features(self, imgs: List[Image], norm: bool = True) -> torch.Tensor:
+        image_features = self.encode_pil_images(imgs)
+        if norm:
+            image_features /= image_features.clone().norm(dim=-1, keepdim=True)
+
+        return image_features
 
     def get_image_features(self, img: torch.Tensor, norm: bool = True) -> torch.Tensor:
         image_features = self.encode_images(img)
@@ -198,22 +210,11 @@ class ExpEvaluator:
         #print(type(images[0]))
         #print(images)
         
-        images = [np.asarray(image) for image in PIL_images]
+        
 
         dino_images_features = self.evaluator.get_dino_image_features(PIL_images)
 
-        if resolution is not None:
-            # noinspection PyTypeChecker,PyUnresolvedReferences
-            images = [
-                np.array(image.resize((resolution, resolution), resample=PIL.Image.BICUBIC))
-                for image in PIL_images
-            ]
-        print(images)
-        print(images[0])
-        print(type(images[0]))
-        print(images[0].shape)
-        images = self._images_to_tensor(images)
-        images_features = self.evaluator.get_image_features(images)
+        images_features = self.evaluator.get_pil_image_features(PIL_images)
 
         return images_features, dino_images_features
 
