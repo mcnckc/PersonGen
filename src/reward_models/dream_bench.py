@@ -19,8 +19,7 @@ import torch.backends.cuda
 
 from torchvision import transforms
 
-from vllm import LLM, SamplingParams
-from transformers import AutoProcessor
+from transformers import AutoProcessor, GenerationConfig, Qwen3VLMoeForConditionalGeneration
 from qwen_vl_utils import process_vision_info
 
 import PIL
@@ -282,25 +281,23 @@ class DreamBenchPPEvaluator(ExpEvaluator):
         old_visible_devices = os.environ.get("CUDA_VISIBLE_DEVICES")
         os.environ["CUDA_VISIBLE_DEVICES"] = '0' if device_idx is None else str(device_idx)
         
-        self.vllm_model = LLM(
-            model=vllm_model, 
-            trust_remote_code=True, 
-            gpu_memory_utilization=0.90,
-            tensor_parallel_size=1,
-            max_num_seqs=1000,
-            max_model_len=16384, 
+        self.llm_model  = Qwen3VLMoeForConditionalGeneration.from_pretrained(
+            "Qwen/Qwen3-VL-30B-A3B-Instruct",
+            dtype=torch.bfloat16,
+            attn_implementation="flash_attention_2",
+            device_map="auto",
         )
         
         if determenistic:
             # Deterministic sampling: Qwen3-VL-30B-A3B-Instruct-FP8 vLLM example
-            self.sampling_params = SamplingParams(
+            self.sampling_params = GenerationConfig(
                 temperature=0,
                 top_k=-1,
                 max_tokens=1024
             )
         else:
             # Qwen3 non-thinking or Qwen3-VL-30B-A3B-Instruct generation_config.json
-            self.sampling_params = SamplingParams(
+            self.sampling_params = GenerationConfig(
                 temperature=0.7,
                 top_p=0.8,
                 top_k=20,
@@ -459,12 +456,18 @@ class DreamBenchPPEvaluator(ExpEvaluator):
         self, prompts_batch: List[str], target_images_batch: List[Image], return_texts: bool = False, seed=6417,
     ) -> Union[List[Optional[int]], Tuple[List[Optional[int]], List[str]]]:
         PF_inputs = self._get_PF_inputs(prompts_batch, target_images_batch)
-
+        print(f"PF inputs:{PF_inputs}")
         sampling_params = self.sampling_params.clone()
         sampling_params.seed = seed
-        PF_responses = self.vllm_model.generate(PF_inputs, sampling_params=sampling_params)
-        
-        PF_texts = [response.outputs[0].text for response in PF_responses]
+        PF_responses_ids = self.llm_model.generate(PF_inputs, generation_config=sampling_params)
+        PF_responses_ids_trimmed = [
+            out_ids[len(in_ids):] for in_ids, out_ids in zip(PF_inputs, PF_responses_ids)
+        ]
+        PF_texts = self.processor.batch_decode(
+            PF_responses_ids_trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
+        )
+        print(PF_texts)
+        #PF_texts = [response.outputs[0].text for response in PF_responses]
         PF_scores = [self._get_score(text) for text in PF_texts]
 
         if return_texts:
@@ -478,9 +481,15 @@ class DreamBenchPPEvaluator(ExpEvaluator):
         
         sampling_params = self.sampling_params.clone()
         sampling_params.seed = seed
-        CP_responses = self.vllm_model.generate(CP_inputs, sampling_params=sampling_params)
-        
-        CP_texts = [response.outputs[0].text for response in CP_responses]
+        CP_responses_ids = self.llm_model.generate(CP_inputs, generation_config=sampling_params)
+        CP_responses_ids_trimmed = [
+            out_ids[len(in_ids):] for in_ids, out_ids in zip(CP_inputs, CP_responses_ids)
+        ]
+        CP_texts = self.processor.batch_decode(
+            CP_responses_ids_trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
+        )
+        print(CP_texts)
+        #CP_texts = [response.outputs[0].text for response in CP_responses]
         CP_scores = [self._get_score(text) for text in CP_texts]
         
         if return_texts:
