@@ -284,7 +284,6 @@ class DreamBenchPPEvaluator(ExpEvaluator):
         self.llm_model  = Qwen3VLMoeForConditionalGeneration.from_pretrained(
             "Qwen/Qwen3-VL-30B-A3B-Instruct",
             dtype=torch.bfloat16,
-            attn_implementation="flash_attention_2",
             device_map="auto",
         )
         
