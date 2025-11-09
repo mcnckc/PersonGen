@@ -271,7 +271,7 @@ class DreamBenchPPEvaluator(ExpEvaluator):
     def __init__(
         self, device,
         config, 
-        vllm_model='Qwen/Qwen3-VL-30B-A3B-Instruct', 
+        llm_model='Qwen/Qwen3-VL-30B-A3B-Instruct', 
         prompts_path=None,
         determenistic=True
     ) -> None:
@@ -305,7 +305,7 @@ class DreamBenchPPEvaluator(ExpEvaluator):
                 max_tokens=32768
             )
         
-        self.processor = AutoProcessor.from_pretrained(vllm_model)
+        self.processor = AutoProcessor.from_pretrained(llm_model)
 
         self.prompts = {}
         for key, file_name in self._PROMPTS.items():
