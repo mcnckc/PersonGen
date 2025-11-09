@@ -456,9 +456,9 @@ class DreamBenchPPEvaluator(ExpEvaluator):
     ) -> Union[List[Optional[int]], Tuple[List[Optional[int]], List[str]]]:
         PF_inputs = self._get_PF_inputs(prompts_batch, target_images_batch)
         print(f"PF inputs:{PF_inputs}")
-        sampling_params = self.sampling_params.clone()
-        sampling_params.seed = seed
-        PF_responses_ids = self.llm_model.generate(PF_inputs, generation_config=sampling_params)
+        #sampling_params = self.sampling_params.clone()
+        #sampling_params.seed = seed
+        PF_responses_ids = self.llm_model.generate(PF_inputs, generation_config=self.sampling_params)
         PF_responses_ids_trimmed = [
             out_ids[len(in_ids):] for in_ids, out_ids in zip(PF_inputs, PF_responses_ids)
         ]
@@ -478,9 +478,9 @@ class DreamBenchPPEvaluator(ExpEvaluator):
     ) -> Union[List[Optional[int]], Tuple[List[Optional[int]], List[str]]]:
         CP_inputs = self._get_CP_inputs(source_images_batch, target_images_batch)
         
-        sampling_params = self.sampling_params.clone()
-        sampling_params.seed = seed
-        CP_responses_ids = self.llm_model.generate(CP_inputs, generation_config=sampling_params)
+        #sampling_params = self.sampling_params.clone()
+        #sampling_params.seed = seed
+        CP_responses_ids = self.llm_model.generate(CP_inputs, generation_config=self.sampling_params)
         CP_responses_ids_trimmed = [
             out_ids[len(in_ids):] for in_ids, out_ids in zip(CP_inputs, CP_responses_ids)
         ]
