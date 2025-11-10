@@ -373,7 +373,7 @@ class DreamBenchPPEvaluator(ExpEvaluator):
         inputs = self.processor.apply_chat_template(messages, 
                                                     add_generation_prompt=True, 
                                                     return_dict=True, 
-                                                    tokenize=False, 
+                                                    tokenize=True, 
                                                     return_tensors="pt")
         print(type(inputs))
         print(inputs)
