@@ -410,7 +410,15 @@ class DreamBenchPPEvaluator(ExpEvaluator):
                 results[idx] = future.result()
                     
         return results
-        
+    
+    def _process_messages_batch(self, all_messages: List):
+        return self.processor.apply_chat_template(all_messages, 
+                                                    add_generation_prompt=True, 
+                                                    return_dict=True, 
+                                                    tokenize=True,
+                                                    padding=True,
+                                                    return_tensors="pt")
+
     def _get_PF_inputs(self, prompts_batch: List[str], target_images_batch: List[Image]):
         all_messages = []
         for prompt, target_image in tqdm.tqdm(zip(prompts_batch, target_images_batch), desc='Preparing PF inputs'):
@@ -426,7 +434,8 @@ class DreamBenchPPEvaluator(ExpEvaluator):
                 },
             ]
             all_messages.append(messages)
-        return self._process_messages_parallel(all_messages)
+        inputs = self._process_messages_batch(all_messages)
+        return inputs
 
     def _get_CP_inputs(self, source_images_batch: List[Image], target_images_batch: List[Image]):
         all_messages = []
@@ -442,8 +451,11 @@ class DreamBenchPPEvaluator(ExpEvaluator):
                     ],
                 },
             ]
+            print("SRC_SHAPE", source_image)
             all_messages.append(messages)
-        return self._process_messages_parallel(all_messages)
+        inputs = self._process_messages_batch(all_messages)
+        print(inputs)
+        return inputs
 
     @staticmethod
     def _get_score(responce: str) -> Optional[int]:
@@ -487,7 +499,7 @@ class DreamBenchPPEvaluator(ExpEvaluator):
         print(f"CP inputs:{CP_inputs}")
         #sampling_params = self.sampling_params.clone()
         #sampling_params.seed = seed
-        CP_responses_ids = self.llm_model.generate(CP_inputs, generation_config=self.sampling_params)
+        CP_responses_ids = self.llm_model.generate(**CP_inputs, generation_config=self.sampling_params)
         CP_responses_ids_trimmed = [
             out_ids[len(in_ids):] for in_ids, out_ids in zip(CP_inputs, CP_responses_ids)
         ]
