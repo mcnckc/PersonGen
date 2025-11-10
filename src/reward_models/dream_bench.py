@@ -412,12 +412,14 @@ class DreamBenchPPEvaluator(ExpEvaluator):
         return results
     
     def _process_messages_batch(self, all_messages: List):
-        return self.processor.apply_chat_template(all_messages, 
+        inputs = self.processor.apply_chat_template(all_messages, 
                                                     add_generation_prompt=True, 
                                                     return_dict=True, 
                                                     tokenize=True,
                                                     padding=True,
                                                     return_tensors="pt")
+        inputs = {k: v.to(self.device) for k, v in inputs.items()}
+        return inputs
 
     def _get_PF_inputs(self, prompts_batch: List[str], target_images_batch: List[Image]):
         all_messages = []
@@ -458,7 +460,6 @@ class DreamBenchPPEvaluator(ExpEvaluator):
         inputs = self._process_messages_batch(all_messages)
         for k, v in inputs.items():
             print(f"{k} shape {v.shape}")
-        print(inputs)
         
         return inputs
 
