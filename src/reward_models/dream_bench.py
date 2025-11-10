@@ -370,7 +370,7 @@ class DreamBenchPPEvaluator(ExpEvaluator):
         
 
     def _process_messagess(self, messages):
-        inputs = self.processor.apply_chat_template(messages, add_generation_prompt=True, tokenize=False)
+        inputs = self.processor.apply_chat_template(messages, add_generation_prompt=True, return_dict=True, tokenize=False, return_tensors="pt")
         """
         image_inputs, video_inputs, video_kwargs = process_vision_info(
             messages,
