@@ -370,7 +370,8 @@ class DreamBenchPPEvaluator(ExpEvaluator):
         
 
     def _process_messagess(self, messages):
-        text_input = self.processor.apply_chat_template(messages, add_generation_prompt=True, tokenize=False)
+        inputs = self.processor.apply_chat_template(messages, add_generation_prompt=True, tokenize=False)
+        """
         image_inputs, video_inputs, video_kwargs = process_vision_info(
             messages,
             image_patch_size=self.processor.image_processor.patch_size,
@@ -387,7 +388,7 @@ class DreamBenchPPEvaluator(ExpEvaluator):
             inputs['multi_modal_data']['image'] = image_inputs
         if video_inputs is not None:
             inputs['multi_modal_data']['video'] = video_inputs
-
+        """
         return inputs
     
     def _process_messages_parallel(self, all_messages: List, max_workers: int = 32):
@@ -477,7 +478,7 @@ class DreamBenchPPEvaluator(ExpEvaluator):
         self, source_images_batch: List[Image], target_images_batch: List[Image], return_texts: bool = False, seed=6417,
     ) -> Union[List[Optional[int]], Tuple[List[Optional[int]], List[str]]]:
         CP_inputs = self._get_CP_inputs(source_images_batch, target_images_batch)
-        
+        print(f"CP inputs:{CP_inputs}")
         #sampling_params = self.sampling_params.clone()
         #sampling_params.seed = seed
         CP_responses_ids = self.llm_model.generate(CP_inputs, generation_config=self.sampling_params)
