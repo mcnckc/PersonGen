@@ -142,8 +142,8 @@ class ExpEvaluator:
     def __init__(self, device, config):
         self.device = device
         self.evaluator = DINOEvaluator(device=device)
-        self.train_images = self.load_images(config.src_img_dir)
         self.general_transform = transforms.Resize((512, 512))
+        self.train_images = self.load_images(config.src_img_dir)
         self.train_images_features, self.dino_train_images_features = self._get_image_features(self.train_images)
         self.global_results = {}
         self.global_results['real_image_similarity'], self.global_results['real_image_similarity_mx'] = (
