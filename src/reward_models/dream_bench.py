@@ -663,7 +663,9 @@ class DreamBench(BaseModel):
         batch: tp.Dict[str, torch.Tensor],
         image: torch.Tensor,
     ) -> torch.Tensor:
-        image = F.to_pil_image(batch["image"].squeeze(dim=0).to(torch.float32).cpu())
+        print("IMG TYPE:", type(image))
+        print("Real shape:", image.shape)
+        image = F.to_pil_image(image.squeeze(dim=0).to(torch.float32).cpu())
         results = self.db([image])
         batch.update({name1:results[name2] for name1, name2 in self.tracked_metrics.items()})
         return batch['CP'] + batch['PF']
