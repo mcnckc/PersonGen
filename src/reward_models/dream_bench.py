@@ -451,10 +451,15 @@ class DreamBenchPPEvaluator(ExpEvaluator):
                     ],
                 },
             ]
-            print("SRC_SHAPE", source_image)
+            print("SRC_SHAPE", source_image.size)
+            print("TG_SHAPE", target_image.size)
             all_messages.append(messages)
+        print(f"Batch length:{len(source_images_batch)}")
         inputs = self._process_messages_batch(all_messages)
+        for k, v in inputs.items():
+            print(f"{k} shape {v.shape}")
         print(inputs)
+        
         return inputs
 
     @staticmethod
