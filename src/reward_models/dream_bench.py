@@ -143,6 +143,7 @@ class ExpEvaluator:
         self.device = device
         self.evaluator = DINOEvaluator(device=device)
         self.train_images = self.load_images(config.src_img_dir)
+        self.general_transform = transforms.Resize((512, 512))
         self.train_images_features, self.dino_train_images_features = self._get_image_features(self.train_images)
         self.global_results = {}
         self.global_results['real_image_similarity'], self.global_results['real_image_similarity_mx'] = (
@@ -178,7 +179,7 @@ class ExpEvaluator:
         if not src_image_paths:
             raise ValueError(f"Directory {src_img_dir} has no images")
         for img_path in src_image_paths:
-            src_images.append(PIL.Image.open(img_path))
+            src_images.append(self.general_transform(PIL.Image.open(img_path)))
         return src_images
     
     @staticmethod
@@ -315,7 +316,6 @@ class DreamBenchPPEvaluator(ExpEvaluator):
                 self.prompts[key] = requests.request(
                     'get', os.path.join(self._PROMPTS_URL, file_name)
                 ).content.decode()
-
         if old_visible_devices is None:
             del os.environ["CUDA_VISIBLE_DEVICES"]
         else:
