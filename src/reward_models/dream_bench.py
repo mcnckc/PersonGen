@@ -244,8 +244,6 @@ class ExpEvaluator:
         (results['text_similarities_with_class'],results['text_similarities_mx_with_class'],) = \
         self._calc_similarity(self.empty_label_with_class_features, images_features)
         
-        
-        results |= self.global_results
         if verbose:
             print('TS: {0:.3f} {1}'.format(
                 results['text_similarities'],
@@ -321,7 +319,6 @@ class DreamBenchPPEvaluator(ExpEvaluator):
         else:
             os.environ["CUDA_VISIBLE_DEVICES"] = old_visible_devices
         
-        self.global_results = {}
         CP_to_process = []
 
         for i, left_image in enumerate(self.train_images):
