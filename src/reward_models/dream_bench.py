@@ -584,7 +584,7 @@ class DreamBenchPPEvaluator(ExpEvaluator):
             ))
 
         
-
+        CP_idx = 0
         for idx, _ in enumerate(self.train_images):
             for jdx, _ in enumerate(images):
                 results['CPs_mx'][idx, jdx] = CPs_all[CP_idx]
@@ -598,6 +598,7 @@ class DreamBenchPPEvaluator(ExpEvaluator):
                 results['CPs'],
             ))
 
+        PF_idx = 0
         for idx, _ in enumerate(images):
             results['PFs_mx_with_class'][0, idx] = PFs_all[PF_idx]
             PF_idx += 1
