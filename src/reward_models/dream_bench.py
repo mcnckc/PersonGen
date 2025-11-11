@@ -484,7 +484,7 @@ class DreamBenchPPEvaluator(ExpEvaluator):
         print(f"PF inputs:{PF_inputs}")
         #sampling_params = self.sampling_params.clone()
         #sampling_params.seed = seed
-        PF_responses_ids = self.llm_model.generate(PF_inputs, generation_config=self.sampling_params)
+        PF_responses_ids = self.llm_model.generate(**PF_inputs, generation_config=self.sampling_params)
         PF_responses_ids_trimmed = [
             out_ids[len(in_ids):] for in_ids, out_ids in zip(PF_inputs, PF_responses_ids)
         ]
