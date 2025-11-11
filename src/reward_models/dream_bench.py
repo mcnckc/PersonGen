@@ -564,8 +564,8 @@ class DreamBenchPPEvaluator(ExpEvaluator):
             ):
                 CPs += self.get_concept_preservation(source_images_batch, CP_target_images_batch, return_texts=False, seed=seed)
 
-            CPs_all.append(torch.array(CPs, dtype=float))
-            PFs_all.append(torch.array(PFs, dtype=float))
+            CPs_all.append(torch.tensor(CPs, dtype=float))
+            PFs_all.append(torch.tensor(PFs, dtype=float))
         
         # If all evaluations failed then NaN will cause warnings - ignore them
         with warnings.catch_warnings():
