@@ -587,7 +587,7 @@ class DreamBenchPPEvaluator(ExpEvaluator):
                 results['CPs_mx'][idx, jdx] = CPs_all[CP_idx]
                 CP_idx += 1
                     
-        results['CPs'] = results['CPs_mx'].mean().item()
+        results['CPs'] = results['CPs_mx'].mean(dim=0)
             
         results['CPs_mx'] = results['CPs_mx'].tolist()
         if verbose:
@@ -600,7 +600,7 @@ class DreamBenchPPEvaluator(ExpEvaluator):
             results['PFs_mx_with_class'][0, idx] = PFs_all[PF_idx]
             PF_idx += 1
                 
-        results['PFs_with_class'] = results['PFs_mx_with_class'].mean().item()
+        results['PFs_with_class'] = results['PFs_mx_with_class']
 
         results['PFs_mx_with_class'] = results['PFs_mx_with_class'].tolist()
         if verbose:
@@ -668,10 +668,11 @@ class DreamBench(BaseModel):
         batch: tp.Dict[str, torch.Tensor],
         image: torch.Tensor,
     ) -> torch.Tensor:
-        print("IMG TYPE:", type(image))
+        print("GET REWARD\nIMG TYPE:", type(image))
         print("Real shape:", image.shape)
-        image = F.to_pil_image(image.squeeze(dim=0).to(torch.float32).cpu())
-        results = self.db([image])
+        images = [F.to_pil_image(im.to(torch.float32).cpu()) for im in image]
+        print("Deduced batch size:", len(images))
+        results = self.db(images)
         print("Received results:", results)
         batch.update({name1:results[name2] for name1, name2 in self.tracked_metrics.items()})
         return batch['CP'] + batch['PF']
