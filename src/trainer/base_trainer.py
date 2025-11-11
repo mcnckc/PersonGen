@@ -332,7 +332,8 @@ class BaseTrainer:
                     metrics=self.evaluation_metrics,
                 )
                 for loss_name in self.evaluation_loss_names:
-                    self.evaluation_metrics.update(loss_name, batch[loss_name].item())
+                    loss = batch[loss_name]
+                    self.evaluation_metrics.update(loss_name, loss.item() if torch.is_tensor(loss) else loss)
             self.writer.set_step(epoch * self.epoch_len, part)
             print("Log on validation")
             self._log_scalars(self.evaluation_metrics)
