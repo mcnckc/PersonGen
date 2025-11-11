@@ -439,6 +439,8 @@ class DreamBenchPPEvaluator(ExpEvaluator):
             all_messages.append(messages)
         inputs = self._process_messages_batch(all_messages)
         for k, v in inputs.items():
+            print(f"PF {k} has shape {v.shape}")
+        for k, v in inputs.items():
             print(f"PF type of {k} is {v.dtype}")
         return inputs
 
@@ -462,9 +464,9 @@ class DreamBenchPPEvaluator(ExpEvaluator):
         print(f"Batch length:{len(source_images_batch)}")
         inputs = self._process_messages_batch(all_messages)
         for k, v in inputs.items():
-            print(f"{k} shape {v.shape}")
+            print(f"CP {k} has shape {v.shape}")
         for k, v in inputs.items():
-            print(f"PF type of {k} is {v.dtype}")
+            print(f"CP type of {k} is {v.dtype}")
         return inputs
 
     @staticmethod
