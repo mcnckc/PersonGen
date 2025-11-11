@@ -281,7 +281,7 @@ class DreamBenchPPEvaluator(ExpEvaluator):
         device_idx = torch.device(device).index
         old_visible_devices = os.environ.get("CUDA_VISIBLE_DEVICES")
         os.environ["CUDA_VISIBLE_DEVICES"] = '0' if device_idx is None else str(device_idx)
-        
+        self.qwen_batch = config.qwen_batch
         self.llm_model  = Qwen3VLMoeForConditionalGeneration.from_pretrained(
             "Qwen/Qwen3-VL-30B-A3B-Instruct",
             dtype=torch.bfloat16,
@@ -331,7 +331,6 @@ class DreamBenchPPEvaluator(ExpEvaluator):
 
         source_images, CP_target_images = [*zip(*CP_to_process)]
 
-        chunk_size = 5000
         CPs_all = [], []
         if 'seeds' not in config:
             config['seeds'] = (179, )
@@ -340,11 +339,13 @@ class DreamBenchPPEvaluator(ExpEvaluator):
             CPs = []
                 
             for source_images_batch, CP_target_images_batch in zip(
-                [source_images[idx:idx + chunk_size] for idx in range(0, len(source_images), chunk_size)],
-                [CP_target_images[idx:idx + chunk_size] for idx in range(0, len(CP_target_images), chunk_size)]
+                [source_images[idx:idx + self.qwen_batch] for idx in range(0, len(source_images), self.qwen_batch)],
+                [CP_target_images[idx:idx + self.qwen_batch] for idx in range(0, len(CP_target_images), self.qwen_batch)]
             ):
+                print("GETTING CP")
                 CPs += self.get_concept_preservation(source_images_batch, CP_target_images_batch, return_texts=False, seed=seed)
-
+                print("GOT CP")
+            
             CPs_all.append(np.array(CPs, dtype=float))
         
         # If all evaluations failed then NaN will cause warnings - ignore them
@@ -543,19 +544,18 @@ class DreamBenchPPEvaluator(ExpEvaluator):
         prompts, PF_target_images = [*zip(*PF_to_process)]
         source_images, CP_target_images = [*zip(*CP_to_process)]
 
-        chunk_size = 5000
         PFs_all, CPs_all = [], []
         for seed in seeds:
             CPs, PFs = [], []
             for prompts_batch, PF_target_images_batch in zip(
-                [prompts[idx:idx + chunk_size] for idx in range(0, len(prompts), chunk_size)],
-                [PF_target_images[idx:idx + chunk_size] for idx in range(0, len(PF_target_images), chunk_size)]
+                [prompts[idx:idx + self.qwen_batch] for idx in range(0, len(prompts), self.qwen_batch)],
+                [PF_target_images[idx:idx + self.qwen_batch] for idx in range(0, len(PF_target_images), self.qwen_batch)]
             ):
                 PFs += self.get_prompt_following(prompts_batch, PF_target_images_batch, return_texts=False, seed=seed)
                 
             for source_images_batch, CP_target_images_batch in zip(
-                [source_images[idx:idx + chunk_size] for idx in range(0, len(source_images), chunk_size)],
-                [CP_target_images[idx:idx + chunk_size] for idx in range(0, len(CP_target_images), chunk_size)]
+                [source_images[idx:idx + self.qwen_batch] for idx in range(0, len(source_images), self.qwen_batch)],
+                [CP_target_images[idx:idx + self.qwen_batch] for idx in range(0, len(CP_target_images), self.qwen_batch)]
             ):
                 CPs += self.get_concept_preservation(source_images_batch, CP_target_images_batch, return_texts=False, seed=seed)
 
