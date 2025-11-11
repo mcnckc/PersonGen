@@ -327,7 +327,7 @@ class DreamBenchPPEvaluator(ExpEvaluator):
         for i, left_image in enumerate(self.train_images):
             for right_image in self.train_images[i:]:
                 CP_to_process.append((left_image, right_image))
-        self.global_results['real_CP_mx'] = np.zeros((len(self.train_images), len(self.train_images)), dtype=float)
+        self.global_results['real_CP_mx'] = torch.zeros((len(self.train_images), len(self.train_images)), dtype=float)
 
         source_images, CP_target_images = [*zip(*CP_to_process)]
 
@@ -346,15 +346,15 @@ class DreamBenchPPEvaluator(ExpEvaluator):
                 CPs += self.get_concept_preservation(source_images_batch, CP_target_images_batch, return_texts=False, seed=seed)
                 print("GOT CP")
             
-            CPs_all.append(np.array(CPs, dtype=float))
+            CPs_all.append(torch.tensor(CPs, dtype=float))
         
         # If all evaluations failed then NaN will cause warnings - ignore them
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", category=RuntimeWarning)
-            CPs_all = np.nanmean(CPs_all, axis=0)
+            CPs_all = torch.nanmean(torch.stack(CPs_all, dim=0), dim=0)
             
         # Set all NaN scores to 0.0
-        CPs_all = np.nan_to_num(CPs_all, nan=0.0)
+        CPs_all = torch.nan_to_num(CPs_all, nan=0.0)
         
         CP_idx = 0
         for idx, _ in enumerate(self.train_images):
@@ -532,14 +532,14 @@ class DreamBenchPPEvaluator(ExpEvaluator):
         for train_image in self.train_images:
             for image in images:
                 CP_to_process.append((train_image, image))
-        results['CPs_mx'] = np.zeros((len(self.train_images), len(images)), dtype=float)
+        results['CPs_mx'] = torch.zeros((len(self.train_images), len(images)), dtype=float)
             
 
         results['PFs_with_class_prompt'] = self.empty_label_with_class
             
         for image in images:
             PF_to_process.append((self.empty_label_with_class, image))
-        results['PFs_mx_with_class'] = np.zeros((1, len(images)), dtype=float)
+        results['PFs_mx_with_class'] = torch.zeros((1, len(images)), dtype=float)
 
         prompts, PF_target_images = [*zip(*PF_to_process)]
         source_images, CP_target_images = [*zip(*CP_to_process)]
@@ -559,18 +559,18 @@ class DreamBenchPPEvaluator(ExpEvaluator):
             ):
                 CPs += self.get_concept_preservation(source_images_batch, CP_target_images_batch, return_texts=False, seed=seed)
 
-            CPs_all.append(np.array(CPs, dtype=float))
-            PFs_all.append(np.array(PFs, dtype=float))
+            CPs_all.append(torch.array(CPs, dtype=float))
+            PFs_all.append(torch.array(PFs, dtype=float))
         
         # If all evaluations failed then NaN will cause warnings - ignore them
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", category=RuntimeWarning)
-            PFs_all = np.nanmean(PFs_all, axis=0)
-            CPs_all = np.nanmean(CPs_all, axis=0)
+            PFs_all = torch.nanmean(torch.stack(PFs_all, dim=0), axis=0)
+            CPs_all = torch.nanmean(torch.stack(CPs_all, dim=0), axis=0)
             
         # Set all NaN scores to 0.0
-        PFs_all = np.nan_to_num(PFs_all, nan=0.0)
-        CPs_all = np.nan_to_num(CPs_all, nan=0.0)
+        PFs_all = torch.nan_to_num(PFs_all, nan=0.0)
+        CPs_all = torch.nan_to_num(CPs_all, nan=0.0)
         
         if verbose:
             print('Real Concept Preservation: {0:.3f}'.format(
