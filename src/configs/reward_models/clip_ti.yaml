@@ -10,4 +10,4 @@ val_models:
       placeholder_token: "sks"
       class_name: "dog"
       prompts_path: "dreambench-prompts"
-      qwen_batch: 4
+      qwen_batch: 8

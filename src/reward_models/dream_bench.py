@@ -331,7 +331,7 @@ class DreamBenchPPEvaluator(ExpEvaluator):
 
         source_images, CP_target_images = [*zip(*CP_to_process)]
 
-        CPs_all = [], []
+        CPs_all = []
         if 'seeds' not in config:
             config['seeds'] = (179, )
 
