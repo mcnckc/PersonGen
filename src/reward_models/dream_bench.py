@@ -100,14 +100,14 @@ class CLIPEvaluator(object):
         gen_img_features = self.get_image_features(generated_images)
 
         similarity_matrix = src_img_features @ gen_img_features.T
-        return similarity_matrix.mean().item(), similarity_matrix.cpu().numpy().tolist()
+        return similarity_matrix.mean().item(), similarity_matrix.tolist()
 
     def txt_to_img_similarity(self, text, generated_images):
         text_features = self.get_text_features(text)
         gen_img_features = self.get_image_features(generated_images)
 
         similarity_matrix = text_features @ gen_img_features.T
-        return similarity_matrix.mean().item(), similarity_matrix.cpu().numpy().tolist()
+        return similarity_matrix.mean().item(), similarity_matrix.tolist()
 
 
 class DINOEvaluator(CLIPEvaluator):
@@ -195,14 +195,14 @@ class ExpEvaluator:
     @staticmethod
     def _calc_similarity(left_features, right_features):
         similarity_matrix = left_features @ right_features.T
-        return similarity_matrix.mean().item(), similarity_matrix.cpu().numpy().tolist()
+        return similarity_matrix.mean().item(), similarity_matrix.tolist()
 
     @staticmethod
     def _calc_self_similarity(features):
         similarity_matrix = features @ features.T
         return similarity_matrix[torch.triu(
             torch.ones_like(similarity_matrix, dtype=bool), diagonal=1
-            )].mean().item(), similarity_matrix.cpu().numpy().tolist()
+            )].mean().item(), similarity_matrix.tolist()
     
     @torch.no_grad()
     def _get_image_features(self, PIL_images, resolution=None):
