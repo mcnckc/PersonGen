@@ -179,8 +179,8 @@ class BaseTrainer:
                 logs, not_improved_count
             )
 
-            if epoch % self.save_period == 0 or best:
-                self._save_checkpoint(epoch, save_best=best, only_best=True)
+            #if epoch % self.save_period == 0 or best:
+            #    self._save_checkpoint(epoch, save_best=best, only_best=True)
 
             if stop_process:  # early_stop
                 break
@@ -320,6 +320,7 @@ class BaseTrainer:
         self.is_train = False
         self.model.eval()
         self.evaluation_metrics.reset()
+        print("Validation started")
         with torch.no_grad():
             for batch_idx, batch in tqdm(
                 enumerate(dataloader),
@@ -333,6 +334,7 @@ class BaseTrainer:
                 for loss_name in self.evaluation_loss_names:
                     self.evaluation_metrics.update(loss_name, batch[loss_name].item())
             self.writer.set_step(epoch * self.epoch_len, part)
+            print("Log on validation")
             self._log_scalars(self.evaluation_metrics)
             self._log_batch(
                 batch_idx, batch, part
@@ -510,6 +512,7 @@ class BaseTrainer:
         if self.writer is None:
             return
         for metric_name in metric_tracker.keys():
+            print(f"Logging {metric_name}")
             self.writer.add_scalar(f"{metric_name}", metric_tracker.avg(metric_name))
 
     def _save_checkpoint(self, epoch, save_best=False, only_best=False):
