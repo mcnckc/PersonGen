@@ -675,6 +675,7 @@ class DreamBench(BaseModel):
         print("Real shape:", image.shape)
         image = F.to_pil_image(image.squeeze(dim=0).to(torch.float32).cpu())
         results = self.db([image])
+        print("Received results:", results)
         batch.update({name1:results[name2] for name1, name2 in self.tracked_metrics.items()})
         return batch['CP'] + batch['PF']
 
