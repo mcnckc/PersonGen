@@ -90,4 +90,4 @@ class ClipTI(BaseModel):
         clipI = clipI.mean()
         batch["clip_t"] = clipT
         batch["clip_i"] = clipI
-        return clipT * clipI
+        return clipI
