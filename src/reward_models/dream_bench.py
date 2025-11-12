@@ -289,18 +289,20 @@ class DreamBenchPPEvaluator(ExpEvaluator):
         if determenistic:
             # Deterministic sampling: Qwen3-VL-30B-A3B-Instruct-FP8 vLLM example
             self.sampling_params = GenerationConfig(
+                do_sample=False,
                 temperature=0,
                 top_k=-1,
-                max_tokens=1024
+                max_new_tokens=1024
             )
         else:
             # Qwen3 non-thinking or Qwen3-VL-30B-A3B-Instruct generation_config.json
             self.sampling_params = GenerationConfig(
+                do_sample=True,
                 temperature=0.7,
                 top_p=0.8,
                 top_k=20,
                 presence_penalty=1.5,
-                max_tokens=32768
+                max_new_tokens=1024
             )
         
         self.processor = AutoProcessor.from_pretrained(llm_model)
