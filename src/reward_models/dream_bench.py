@@ -435,10 +435,12 @@ class DreamBenchPPEvaluator(ExpEvaluator):
             ]
             all_messages.append(messages)
         inputs = self._process_messages_batch(all_messages)
+        """
         for k, v in inputs.items():
             print(f"PF {k} has shape {v.shape}")
         for k, v in inputs.items():
             print(f"PF type of {k} is {v.dtype}")
+        """
         return inputs
 
     def _get_CP_inputs(self, source_images_batch: List[Image], target_images_batch: List[Image]):
@@ -455,15 +457,15 @@ class DreamBenchPPEvaluator(ExpEvaluator):
                     ],
                 },
             ]
-            print("SRC_SHAPE", source_image.size)
-            print("TG_SHAPE", target_image.size)
             all_messages.append(messages)
-        print(f"Batch length:{len(source_images_batch)}")
+        #print(f"Batch length:{len(source_images_batch)}")
         inputs = self._process_messages_batch(all_messages)
+        """
         for k, v in inputs.items():
             print(f"CP {k} has shape {v.shape}")
         for k, v in inputs.items():
             print(f"CP type of {k} is {v.dtype}")
+        """
         return inputs
 
     @staticmethod
@@ -483,7 +485,7 @@ class DreamBenchPPEvaluator(ExpEvaluator):
         self, prompts_batch: List[str], target_images_batch: List[Image], return_texts: bool = False, seed=6417,
     ) -> Union[List[Optional[int]], Tuple[List[Optional[int]], List[str]]]:
         PF_inputs = self._get_PF_inputs(prompts_batch, target_images_batch)
-        print(f"PF inputs:{PF_inputs}")
+        #print(f"PF inputs:{PF_inputs}")
         #sampling_params = self.sampling_params.clone()
         #sampling_params.seed = seed
         PF_responses_ids = self.llm_model.generate(**PF_inputs, generation_config=self.sampling_params)
@@ -493,6 +495,7 @@ class DreamBenchPPEvaluator(ExpEvaluator):
         PF_texts = self.processor.batch_decode(
             PF_responses_ids_trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
         )
+        print("GOT PF TEXTS")
         print(PF_texts)
         #PF_texts = [response.outputs[0].text for response in PF_responses]
         PF_scores = [self._get_score(text) for text in PF_texts]
@@ -505,7 +508,7 @@ class DreamBenchPPEvaluator(ExpEvaluator):
         self, source_images_batch: List[Image], target_images_batch: List[Image], return_texts: bool = False, seed=6417,
     ) -> Union[List[Optional[int]], Tuple[List[Optional[int]], List[str]]]:
         CP_inputs = self._get_CP_inputs(source_images_batch, target_images_batch)
-        print(f"CP inputs:{CP_inputs}")
+        #print(f"CP inputs:{CP_inputs}")
         #sampling_params = self.sampling_params.clone()
         #sampling_params.seed = seed
         CP_responses_ids = self.llm_model.generate(**CP_inputs, generation_config=self.sampling_params)
@@ -515,7 +518,7 @@ class DreamBenchPPEvaluator(ExpEvaluator):
         CP_texts = self.processor.batch_decode(
             CP_responses_ids_trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
         )
-        print(CP_texts)
+        #print(CP_texts)
         #CP_texts = [response.outputs[0].text for response in CP_responses]
         CP_scores = [self._get_score(text) for text in CP_texts]
         
@@ -542,7 +545,7 @@ class DreamBenchPPEvaluator(ExpEvaluator):
         for image in images:
             PF_to_process.append((self.empty_label_with_class, image))
         results['PFs_mx_with_class'] = torch.zeros((1, len(images)), dtype=float)
-
+        print("PF PROMPT:", self.empty_label_with_class)
         prompts, PF_target_images = [*zip(*PF_to_process)]
         source_images, CP_target_images = [*zip(*CP_to_process)]
 
