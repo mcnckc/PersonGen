@@ -155,7 +155,7 @@ class ExpEvaluator:
 
         
 
-        clean_label = (
+        clean_label = (  
                 config.target_prompt
                 .replace('{0} {1}'.format(config.placeholder_token, config.class_name), '{0}')
                 .replace('{0}'.format(config.placeholder_token), '{0}')

@@ -8,6 +8,7 @@ from tqdm.auto import tqdm
 
 from src.datasets.data_utils import inf_loop
 from src.metrics.tracker import MetricTracker
+from src.metrics.global_tracker import GlobalTracker
 from src.models import StableDiffusion
 from src.reward_models import BaseModel
 from src.utils.io_utils import ROOT_PATH
@@ -35,12 +36,15 @@ class BaseTrainer:
         epoch_len=None,
         skip_oom=True,
         batch_transforms=None,
+        multi_prompt=False,
+        global_tracker=None,
     ):
         self.is_train = True
 
         self.config = config
         self.cfg_trainer = self.config.trainer
-
+        self.multi_prompt = multi_prompt
+        self.global_tracker = global_tracker
         self.device = device
         self.skip_oom = skip_oom
 
@@ -112,6 +116,7 @@ class BaseTrainer:
             *self.evaluation_loss_names,
             writer=self.writer,
         )
+
 
         # define checkpoint dir and init everything if required
         self.checkpoint_dir = (
@@ -233,8 +238,9 @@ class BaseTrainer:
         self.is_train = True
         self.model.train()
         self.train_metrics.reset()
-        self.writer.set_step((epoch - 1) * self.epoch_len)
-        self.writer.add_scalar("epoch", epoch)
+        if not self.multi_prompt:
+            self.writer.set_step((epoch - 1) * self.epoch_len)
+            self.writer.add_scalar("epoch", epoch)
         accumulation_step = 0
         batch_idx = 0
         self.optimizer.zero_grad()
@@ -273,23 +279,26 @@ class BaseTrainer:
 
                 # log current results
                 if batch_idx % self.log_step == 0:
-                    self.writer.set_step((epoch - 1) * self.epoch_len + batch_idx)
-                    self.logger.debug(
-                        "Train Epoch: {} {} Loss: {:.6f}".format(
-                            epoch, self._progress(batch_idx), batch["loss"].item()
+                    if not self.multi_prompt:
+                        self.writer.set_step((epoch - 1) * self.epoch_len + batch_idx)
+                        self.logger.debug(
+                            "Train Epoch: {} {} Loss: {:.6f}".format(
+                                epoch, self._progress(batch_idx), batch["loss"].item()
+                            )
                         )
-                    )
-                    if self.lr_scheduler is not None:
-                        self.writer.add_scalar(
-                            "learning rate", self.lr_scheduler.get_last_lr()[0]
-                        )
-                    else:
-                        self.writer.add_scalar(
-                            "learning rate", self.config.optimizer.lr
-                        )
+                        if self.lr_scheduler is not None:
+                            self.writer.add_scalar(
+                                "learning rate", self.lr_scheduler.get_last_lr()[0]
+                            )
+                        else:
+                            self.writer.add_scalar(
+                                "learning rate", self.config.optimizer.lr
+                            )
 
-                    self._log_scalars(self.train_metrics)
-                    self._log_batch(batch_idx, batch)
+                        self._log_scalars(self.train_metrics)
+                        self._log_batch(batch_idx, batch)
+                    else:
+                        self.global_tracker.update(self.train_metrics, batch, self.writer.step)
                     # we don't want to reset train metrics at the start of every epoch
                     # because we are interested in recent train metrics
                     last_train_metrics = self.train_metrics.result()
@@ -336,10 +345,13 @@ class BaseTrainer:
                     self.evaluation_metrics.update(loss_name, loss.item() if torch.is_tensor(loss) else loss)
             self.writer.set_step(epoch * self.epoch_len, part)
             print("Log on validation")
-            self._log_scalars(self.evaluation_metrics)
-            self._log_batch(
-                batch_idx, batch, part
-            )  # log only the last batch during inference
+            if not self.multi_prompt:
+                self._log_scalars(self.evaluation_metrics)
+                self._log_batch(
+                    batch_idx, batch, part
+                )  # log only the last batch during inference
+            else:
+                self.global_tracker.update(self.evaluation_metrics, batch, self.writer.step, val=True)
 
         return self.evaluation_metrics.result()
 

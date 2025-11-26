@@ -1,5 +1,5 @@
 import warnings
-
+from datetime import datetime
 import hydra
 import torch
 from hydra.utils import instantiate
@@ -10,26 +10,13 @@ from omegaconf import open_dict
 from src.constants.trainer import TRAINER_NAME_TO_CLASS
 from src.datasets.data_utils import get_dataloaders
 from src.utils.init_utils import set_random_seed, setup_saving_and_logging
+from src.nb_utils.eval_sets import evaluation_sets
+from src.metrics.global_tracker import GlobalTracker
 
 warnings.filterwarnings("ignore", category=UserWarning)
 
 
-@hydra.main(version_base=None, config_path="src/configs", config_name="refl_train")
-def main(config):
-    """
-    Main script for training. Instantiates the model, optimizer, scheduler,
-    logger, writer, and dataloaders. Runs Trainer to train and
-    evaluate the model.
-
-    Args:
-        config (DictConfig): hydra experiment config.
-    """
-    set_random_seed(config.trainer.seed)
-
-    project_config = OmegaConf.to_container(config)
-    logger = setup_saving_and_logging(config)
-    writer = instantiate(config.writer, logger, project_config)
-
+def train(config, logger, writer, multi_prompt=False, global_tracker=None):
     if config.trainer.device == "auto":
         device = "cuda" if torch.cuda.is_available() else "cpu"
     else:
@@ -44,7 +31,7 @@ def main(config):
     with open_dict(config.reward_models.train_model):
         config.reward_models.train_model = OmegaConf.merge(config.reward_models.train_model,
                     {"target_prompt": config.datasets.train.target_prompt})
-    print(config.reward_models.train_model.target_prompt)
+    print("copied prompt:", config.reward_models.train_model.target_prompt)
     train_reward_model = instantiate(
         config.reward_models["train_model"], device=device
     ).to(device)
@@ -97,9 +84,51 @@ def main(config):
         writer=writer,
         batch_transforms=batch_transforms,
         skip_oom=config.trainer.get("skip_oom", True),
+        multi_prompt=multi_prompt,
+        global_tracker=global_tracker
     )
-
     trainer.train()
+
+@hydra.main(version_base=None, config_path="src/configs", config_name="refl_train")
+def main(config):
+    """
+    Main script for training. Instantiates the model, optimizer, scheduler,
+    logger, writer, and dataloaders. Runs Trainer to train and
+    evaluate the model.
+
+    Args:
+        config (DictConfig): hydra experiment config.
+    """
+    set_random_seed(config.trainer.seed)
+
+    project_config = OmegaConf.to_container(config)
+    logger = setup_saving_and_logging(config)
+    writer = instantiate(config.writer, logger, project_config)
+
+    if config.trainer.multi_prompt:
+        prompts = [p for group in config.trainer.prompt_groups for p in evaluation_sets[group]]
+        fill_in = config.reward_models.train_model.placeholder_token + ' ' + \
+        config.reward_models.train_model.class_name
+        print("FILL IN FOR PROMPTS:", fill_in)
+        prompts = [p.format(fill_in) for p in prompts]
+        print("ALL PROMPTS:", prompts)
+        global_tracker = GlobalTracker(prompts)
+        for prompt_id, prompt in enumerate(prompts):
+            start_time = datetime.now()
+            global_tracker.set_prompt(prompt_id)
+            with open_dict(config.datasets):
+                config.datasets.train = OmegaConf.merge(config.datasets.train,
+                                                        {"target_prompt":prompt})
+                config.datasets.val = OmegaConf.merge(config.datasets.val,
+                                                        {"target_prompt":prompt})
+            train(config, logger, writer, True, global_tracker)
+            writer.exp.log_metrics({
+                "Time for one prompt": (datetime.now() - start_time).total_seconds(),
+            }, step=prompt_id)
+    else:
+        train(config, logger, writer)
+
+    
 
 
 if __name__ == "__main__":
