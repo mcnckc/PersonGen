@@ -251,7 +251,7 @@ class BaseTrainer:
             total=self.epoch_len * self.cfg_trainer.accumulation_steps,
         ):
             for x in batch.items():
-                print(f"ON val, iter:{batch_idx}, {x}")
+                print(f"ON train, iter:{batch_idx}, {x.shape}")
             try:
                 batch = self.process_batch(
                     batch,
@@ -345,7 +345,7 @@ class BaseTrainer:
                 total=len(dataloader),
             ):
                 for x in batch.items():
-                    print(f"ON val, iter:{batch_idx}, {x}")
+                    print(f"ON val, iter:{batch_idx}, {x.shape}")
                 batch = self.process_batch(
                     batch,
                     metrics=self.evaluation_metrics,
