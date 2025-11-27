@@ -309,14 +309,15 @@ class BaseTrainer:
                     break
         logs = last_train_metrics
 
-        self.writer.exp.log_metrics({"Train Epoch time", 
+        print("LOG TIME", (datetime.now() - start_time).total_seconds())
+        self.writer.exp.log_metrics({"Train Epoch time": 
                                      (datetime.now() - start_time).total_seconds()}, step=epoch)
         start_time = datetime.now()
         # Run val/test
         for part, dataloader in self.evaluation_dataloaders.items():
             val_logs = self._evaluation_epoch(epoch, part, dataloader)
             logs.update(**{f"{part}_{name}": value for name, value in val_logs.items()})
-        self.writer.exp.log_metrics({"Val Epoch time", 
+        self.writer.exp.log_metrics({"Val Epoch time":
                                      (datetime.now() - start_time).total_seconds()}, step=epoch)
         return logs
 
