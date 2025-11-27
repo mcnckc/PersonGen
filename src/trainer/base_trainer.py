@@ -250,7 +250,7 @@ class BaseTrainer:
             desc="train",
             total=self.epoch_len * self.cfg_trainer.accumulation_steps,
         ):
-            print("TRAIN BATCH SIZE:", len(batch))
+            print("TRAIN BATCH SIZE:", batch.shape)
             try:
                 batch = self.process_batch(
                     batch,
@@ -343,7 +343,7 @@ class BaseTrainer:
                 desc=part,
                 total=len(dataloader),
             ):
-                print(f"ON val, iter:{batch_idx}, batch size:{len(batch)}")
+                print(f"ON val, iter:{batch_idx}, batch size:{batch.shape}")
                 batch = self.process_batch(
                     batch,
                     metrics=self.evaluation_metrics,
