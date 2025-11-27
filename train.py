@@ -114,6 +114,7 @@ def main(config):
         print("ALL PROMPTS:", prompts)
         global_tracker = GlobalTracker(prompts, writer=writer)
         for prompt_id, prompt in enumerate(prompts):
+            print("START PROMPT ID", prompt_id, prompt)
             start_time = datetime.now()
             global_tracker.set_prompt(prompt_id)
             with open_dict(config.datasets):
@@ -122,6 +123,7 @@ def main(config):
                 config.datasets.val = OmegaConf.merge(config.datasets.val,
                                                         {"target_prompt":prompt})
             train(config, logger, writer, True, global_tracker)
+            print("LOGGING:", (datetime.now() - start_time).total_seconds())
             writer.exp.log_metrics({
                 "Time for one prompt": (datetime.now() - start_time).total_seconds(),
             }, step=prompt_id)
