@@ -1,6 +1,7 @@
 train:
   _target_: src.datasets.DreamDataset
   target_prompt: "A photo of sks dog on the beach"
+  inf_dataset: True
 val:
   _target_: src.datasets.DreamDataset
   target_prompt: "A photo of sks dog on the beach"
