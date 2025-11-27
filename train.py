@@ -99,6 +99,7 @@ def main(config):
     Args:
         config (DictConfig): hydra experiment config.
     """
+    torch.cuda.memory._record_memory_history()
     set_random_seed(config.trainer.seed)
 
     project_config = OmegaConf.to_container(config)
@@ -113,7 +114,7 @@ def main(config):
         prompts = [p.format(fill_in) for p in prompts]
         print("ALL PROMPTS:", prompts)
         global_tracker = GlobalTracker(prompts, writer=writer)
-        for prompt_id, prompt in enumerate(prompts):
+        for prompt_id, prompt in enumerate(prompts[:2]):
             print("START PROMPT ID", prompt_id, prompt)
             start_time = datetime.now()
             global_tracker.set_prompt(prompt_id)
@@ -127,6 +128,7 @@ def main(config):
             writer.exp.log_metrics({
                 "Time for one prompt": (datetime.now() - start_time).total_seconds(),
             }, step=prompt_id)
+            torch.cuda.memory._dump_snapshot(f"memory-{prompt_id}.pickle")
     else:
         train(config, logger, writer)
 
