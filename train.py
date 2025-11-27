@@ -112,7 +112,7 @@ def main(config):
         print("FILL IN FOR PROMPTS:", fill_in)
         prompts = [p.format(fill_in) for p in prompts]
         print("ALL PROMPTS:", prompts)
-        global_tracker = GlobalTracker(prompts)
+        global_tracker = GlobalTracker(prompts, writer=writer)
         for prompt_id, prompt in enumerate(prompts):
             start_time = datetime.now()
             global_tracker.set_prompt(prompt_id)
