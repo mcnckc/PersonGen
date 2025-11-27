@@ -52,6 +52,12 @@ class CLIPEvaluator(object):
             if isinstance(transform, transforms.Resize):
                 transform.antialias = False
 
+    def offload(self):
+        self.model.cpu()
+    
+    def onload(self):
+        self.model.to(self.device)
+
     def tokenize(self, strings: list):
         return clip.tokenize(strings).to(self.device)
 
@@ -122,6 +128,14 @@ class DINOEvaluator(CLIPEvaluator):
             transforms.ToTensor(),
             transforms.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225))
         ])
+    
+    def offload(self):
+        super().offload()
+        self.dino_model.cpu()
+    
+    def onload(self):
+        super().onload()
+        self.dino_model.to(self.device)
 
     @torch.no_grad()
     def dino_encode_images(self, images: List[Image]) -> torch.Tensor:
@@ -167,6 +181,11 @@ class ExpEvaluator:
         self.empty_label_features = self.evaluator.get_text_features(empty_label)
         self.empty_label_with_class_features = self.evaluator.get_text_features(self.empty_label_with_class)
         
+    def offload(self):
+        self.evaluator.offload()
+    
+    def onload(self):
+        self.evaluator.onload()
 
     def load_images(self, src_img_dir):
         src_image_paths = []
@@ -368,6 +387,13 @@ class DreamBenchPPEvaluator(ExpEvaluator):
         
         self.global_results['real_CP_mx'] = self.global_results['real_CP_mx'].tolist()
         
+    def offload(self):
+        super().offload()
+        self.llm_model.cpu()
+    
+    def onload(self):
+        super().onload()
+        self.llm_model.to(self.device)
 
     def _process_messagess(self, messages):
         inputs = self.processor.apply_chat_template(messages, 
@@ -657,6 +683,12 @@ class DreamBench(BaseModel):
             'ClipT':'text_similarities_with_class',
             'PF':'PFs_with_class'
         }
+        
+    def offload(self):
+        self.db.offload()
+
+    def onload(self):
+        self.db.onload()
 
     def tokenize(self, caption: str) -> tp.Dict[str, torch.Tensor]:
         processed_caption = clip.tokenize(

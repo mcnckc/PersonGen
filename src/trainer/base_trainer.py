@@ -235,6 +235,9 @@ class BaseTrainer:
             logs (dict): logs that contain the average loss and metric in
                 this epoch.
         """
+        for reward_model in self.val_reward_models:
+            reward_model.offload()
+
         start_time = datetime.now()
         self.is_train = True
         self.model.train()
@@ -335,6 +338,9 @@ class BaseTrainer:
             logs (dict): logs that contain the information about evaluation.
         """
         self.is_train = False
+        for reward_model in self.val_reward_models:
+            reward_model.onload()
+            
         self.model.eval()
         self.evaluation_metrics.reset()
         print("Validation started")
