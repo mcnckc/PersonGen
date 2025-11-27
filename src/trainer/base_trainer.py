@@ -250,7 +250,8 @@ class BaseTrainer:
             desc="train",
             total=self.epoch_len * self.cfg_trainer.accumulation_steps,
         ):
-            print("TRAIN BATCH SIZE:", batch.shape)
+            for x in batch.items():
+                print(f"ON val, iter:{batch_idx}, {x}")
             try:
                 batch = self.process_batch(
                     batch,
@@ -343,7 +344,8 @@ class BaseTrainer:
                 desc=part,
                 total=len(dataloader),
             ):
-                print(f"ON val, iter:{batch_idx}, batch size:{batch.shape}")
+                for x in batch.items():
+                    print(f"ON val, iter:{batch_idx}, {x}")
                 batch = self.process_batch(
                     batch,
                     metrics=self.evaluation_metrics,
@@ -356,7 +358,7 @@ class BaseTrainer:
             if not self.multi_prompt:
                 self._log_scalars(self.evaluation_metrics)
                 self._log_batch(
-                    batch_idx, batch, part
+                    batch_idx, batch, part 
                 )  # log only the last batch during inference
             else:
                 self.global_tracker.update(self.evaluation_metrics, batch, self.writer.step, val=True)
