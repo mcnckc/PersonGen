@@ -10,7 +10,7 @@ class DreamDataset(Dataset):
         self.all_models_with_tokenizer = all_models_with_tokenizer
 
     def __len__(self):
-        return 1
+        return 1000000000
 
     def __getitem__(self, idx):
         res = {"prompt":self.target_prompt}
