@@ -13,7 +13,7 @@ lr_scheduler: null
 trainer:
   type: 'ReFL'
   loss_scale: 0.001
-  accumulation_steps: 2
+  accumulation_steps: 4
   min_mid_timestep: 30
   max_mid_timestep: 40
   log_step: 2
