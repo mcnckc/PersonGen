@@ -301,9 +301,8 @@ class DreamBenchPPEvaluator(ExpEvaluator):
         self.qwen_batch = config.qwen_batch
         self.llm_model  = Qwen3VLMoeForConditionalGeneration.from_pretrained(
             "Qwen/Qwen3-VL-30B-A3B-Instruct",
-            dtype=torch.bfloat16,
-            device_map="auto",
-        )
+            dtype=torch.bfloat16
+        ).to(self.device)
         
         if determenistic:
             # Deterministic sampling: Qwen3-VL-30B-A3B-Instruct-FP8 vLLM example
@@ -390,6 +389,7 @@ class DreamBenchPPEvaluator(ExpEvaluator):
     def offload(self):
         super().offload()
         self.llm_model.cpu()
+        
     
     def onload(self):
         super().onload()
@@ -683,7 +683,7 @@ class DreamBench(BaseModel):
             'ClipT':'text_similarities_with_class',
             'PF':'PFs_with_class'
         }
-        
+
     def offload(self):
         self.db.offload()
 
