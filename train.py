@@ -114,7 +114,7 @@ def main(config):
         prompts = [p.format(fill_in) for p in prompts]
         print("ALL PROMPTS:", prompts)
         global_tracker = GlobalTracker(prompts, writer=writer)
-        for prompt_id, prompt in enumerate([prompts[2] + prompts[0:2] + prompts[2:]]):
+        for prompt_id, prompt in enumerate([prompts[2]] + prompts[0:2] + prompts[2:]):
             print("START PROMPT ID", prompt_id, prompt)
             start_time = datetime.now()
             global_tracker.set_prompt(prompt_id)
