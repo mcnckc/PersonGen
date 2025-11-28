@@ -340,7 +340,7 @@ class BaseTrainer:
         self.is_train = False
         for reward_model in self.val_reward_models:
             reward_model.onload()
-            
+
         self.model.eval()
         self.evaluation_metrics.reset()
         print("Validation started")
@@ -527,7 +527,7 @@ class BaseTrainer:
         #print('logging image', batch["image"].shape, batch["image"])
         self.writer.add_image(
             image_name=mode,
-            image=F.to_pil_image(batch["image"].squeeze(dim=0).to(torch.float16).cpu()),
+            image=F.to_pil_image(batch["image"][0].to(torch.float16).cpu()),
         )
         
 

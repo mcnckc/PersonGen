@@ -23,7 +23,7 @@ class GlobalTracker:
         else:
             self.metrics[self.prompt_id][step] = {name: metric_tracker.avg(name) for name in metric_tracker.keys()}
         self.writer.exp.log_image(
-                image_data=F.to_pil_image(batch["image"].squeeze(dim=0).to(torch.float16).cpu()), 
+                image_data=F.to_pil_image(batch["image"][0].to(torch.float16).cpu()), 
                 name=self.prompts[self.prompt_id], step=step
         )
     
