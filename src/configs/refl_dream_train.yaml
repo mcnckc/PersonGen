@@ -13,12 +13,12 @@ lr_scheduler: null
 trainer:
   type: 'ReFL'
   loss_scale: 0.001
-  accumulation_steps: 2
+  accumulation_steps: 1
   min_mid_timestep: 30
   max_mid_timestep: 40
   log_step: 2
-  n_epochs: 9
-  epoch_len: 5
+  n_epochs: 4
+  epoch_len: 10
   multi_prompt: True
   prompt_groups: ['', 'live']
   train_loss_names: ['loss', 'clip_t', 'clip_i']
