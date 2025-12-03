@@ -12,7 +12,7 @@ class GlobalTracker:
         self.prompts = prompts
         self.prompt_id = 0
         self.metrics = [{} for _ in range(len(self.prompts))]
-        self.val_images = [{} for _ in range(len.self.prompts)]
+        self.val_images = [{} for _ in range(len(self.prompts))]
         self.writer = writer
     
     def set_prompt(self, id: int):
@@ -30,7 +30,7 @@ class GlobalTracker:
         )
 
     def score_val_images(self, reward_model):
-        self.val_metrics = [{} for _ in range(len.self.prompts)]
+        self.val_metrics = [{} for _ in range(len(self.prompts))]
         for pid, prompt in enumerate(self.prompts):
             reward_model.update_target_prompt(prompt)
             for step, image in self.val_images[pid].items():
@@ -42,14 +42,14 @@ class GlobalTracker:
     def log_total(self):
         for step in self.metrics[0].keys():
             self.writer.exp.log_metrics({
-                    name + '_train': sum(self.metrics[i][step][name] for i in range(len(self.metrics)) / len(self.metrics)) 
+                    name + '_train': sum(self.metrics[i][step][name] for i in range(len(self.metrics))) / len(self.metrics) 
                     for name in self.metrics[0][step].keys()
                 },
                 step=step
             )
         for step in self.val_metrics[0].keys():
             self.writer.exp.log_metrics({
-                    name + '_val': sum(self.val_metrics[i][step][name] for i in range(len(self.val_metrics)) / len(self.metrics)) 
+                    name + '_val': sum(self.val_metrics[i][step][name] for i in range(len(self.val_metrics))) / len(self.metrics)
                     for name in self.val_metrics[0][step].keys()
                 },
                 step=step
