@@ -38,11 +38,11 @@ class GlobalTracker:
                 start_time = datetime.now()
                 batch = {"image":image.to(self.device)}
                 reward_model.score(batch)
-                print(f"SCORING BATCH: of size{len(batch["image"])}", batch)
+                print(f"SCORING BATCH: of size {len(batch["image"])}", batch)
                 self.val_metrics[pid][step] = {loss_name: loss for loss_name, loss in batch.items() if loss_name != "image"}
                 self.writer.exp.log_metrics({
                         "One batch validation time": (datetime.now() - start_time).total_seconds(),
-                }, step=0)
+                }, step=pid * 100 + step)
 
     def log_total(self):
         for pid in range(len(self.metrics)):
