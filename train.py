@@ -127,14 +127,14 @@ def main(config):
                                                         {"target_prompt":prompt})
                 config.datasets.val = OmegaConf.merge(config.datasets.val,
                                                         {"target_prompt":prompt})
-            train(config, logger, writer, True, global_tracker)
+            train(config, device, logger, writer, train_reward_model, val_reward_models, True, global_tracker)
             print("LOGGING:", (datetime.now() - start_time).total_seconds())
             writer.exp.log_metrics({
                 "Time for one prompt": (datetime.now() - start_time).total_seconds(),
             }, step=prompt_id)
             #torch.cuda.memory._dump_snapshot(f"memory-{prompt_id}.pickle")
     else:
-        train(config, logger, writer)
+        train(config, device, logger, writer, train_reward_model, val_reward_models)
 
     
 
