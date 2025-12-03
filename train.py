@@ -16,11 +16,9 @@ from src.metrics.global_tracker import GlobalTracker
 warnings.filterwarnings("ignore", category=UserWarning)
 
 
-def train(config, logger, writer, multi_prompt=False, global_tracker=None):
-    if config.trainer.device == "auto":
-        device = "cuda" if torch.cuda.is_available() else "cpu"
-    else:
-        device = config.trainer.device
+def train(config, device, logger, writer, train_reward_model,
+          val_reward_models, multi_prompt=False, global_tracker=None):
+    
 
     # build stable diffusion models
     model = instantiate(config.model).to(device)
@@ -28,23 +26,6 @@ def train(config, logger, writer, multi_prompt=False, global_tracker=None):
         model.ema_unet.to(device)
 
     # build reward models
-    with open_dict(config.reward_models.train_model):
-        config.reward_models.train_model = OmegaConf.merge(config.reward_models.train_model,
-                    {"target_prompt": config.datasets.train.target_prompt})
-    print("copied prompt:", config.reward_models.train_model.target_prompt)
-    train_reward_model = instantiate(
-        config.reward_models["train_model"], device=device
-    ).to(device)
-    train_reward_model.requires_grad_(False)
-
-    val_reward_models = []
-    for reward_model_config in config.reward_models["val_models"]:
-        with open_dict(reward_model_config.config):
-            reward_model_config.config = OmegaConf.merge(reward_model_config.config, 
-                                                {"target_prompt": config.datasets.train.target_prompt})
-        reward_model = instantiate(reward_model_config, device=device).to(device)
-        reward_model.requires_grad_(False)
-        val_reward_models.append(reward_model)
 
     all_models_with_tokenizer = val_reward_models + [model, train_reward_model]
 
@@ -105,6 +86,29 @@ def main(config):
     project_config = OmegaConf.to_container(config)
     logger = setup_saving_and_logging(config)
     writer = instantiate(config.writer, logger, project_config)
+    if config.trainer.device == "auto":
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+    else:
+        device = config.trainer.device
+
+    with open_dict(config.reward_models.train_model):
+        config.reward_models.train_model = OmegaConf.merge(config.reward_models.train_model,
+                    {"target_prompt": config.datasets.train.target_prompt})
+    print("copied prompt:", config.reward_models.train_model.target_prompt)
+    train_reward_model = instantiate(
+        config.reward_models["train_model"], device=device
+    ).to(device)
+    train_reward_model.requires_grad_(False)
+
+    val_reward_models = []
+    for reward_model_config in config.reward_models["val_models"]:
+        with open_dict(reward_model_config.config):
+            reward_model_config.config = OmegaConf.merge(reward_model_config.config, 
+                                                {"target_prompt": config.datasets.train.target_prompt})
+        reward_model = instantiate(reward_model_config, device=device).to(device)
+        reward_model.requires_grad_(False)
+        val_reward_models.append(reward_model)
+
 
     if config.trainer.multi_prompt:
         prompts = [p for group in config.trainer.prompt_groups for p in evaluation_sets[group]]
