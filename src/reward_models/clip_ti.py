@@ -35,20 +35,10 @@ class ClipTI(BaseModel):
                 ),
             ]
         )
-        clean_label = (
-            target_prompt
-            .replace('{0} {1}'.format(placeholder_token, class_name), '{0}')
-            .replace('{0}'.format(placeholder_token), '{0}')
-        )
-        clip_prompt = clean_label.format(class_name)
-        print(f"TG prompt {target_prompt} clip prompt: {clip_prompt}")
+        self.placeholder_token = placeholder_token
+        self.class_name = class_name
+        self.update_target_prompt(target_prompt)
         with torch.no_grad():
-            self.tg_prompt = self.model.encode_text(clip.tokenize(
-                clip_prompt,
-                truncate=True,
-            ).to(device))
-            self.tg_prompt = torch.nn.functional.normalize(self.tg_prompt, dim=-1)
-
             src_image_paths = []
             src_images = []
             valid_extensions = {'.jpg', '.jpeg', '.png'}
@@ -66,7 +56,20 @@ class ClipTI(BaseModel):
 
             self.src_images = torch.nn.functional.normalize(self.src_images, dim=-1)
         
-
+    def update_target_prompt(self, target_prompt):
+        clean_label = (
+            target_prompt
+            .replace('{0} {1}'.format(self.placeholder_token, self.class_name), '{0}')
+            .replace('{0}'.format(self.placeholder_token), '{0}')
+        )
+        clip_prompt = clean_label.format(self.class_name)
+        print(f"TG prompt {target_prompt} clip prompt: {clip_prompt}")
+        with torch.no_grad():
+            self.tg_prompt = self.model.encode_text(clip.tokenize(
+                clip_prompt,
+                truncate=True,
+            ).to(self.device))
+            self.tg_prompt = torch.nn.functional.normalize(self.tg_prompt, dim=-1)
     def tokenize(self, caption: str) -> tp.Dict[str, torch.Tensor]:
         processed_caption = clip.tokenize(
             caption,

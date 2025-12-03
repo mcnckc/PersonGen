@@ -166,8 +166,8 @@ class ExpEvaluator:
         self.global_results['dino_real_image_similarity'], self.global_results['dino_real_image_similarity_mx'] = (
             self._calc_self_similarity(self.dino_train_images_features)
         )
-
-        
+        self.placeholder_token = config.placeholder_token
+        self.class_name = config.class_name
 
         clean_label = (  
                 config.target_prompt
@@ -180,7 +180,15 @@ class ExpEvaluator:
         self.global_results['target_clean_prompt'] = empty_label
         self.empty_label_features = self.evaluator.get_text_features(empty_label)
         self.empty_label_with_class_features = self.evaluator.get_text_features(self.empty_label_with_class)
-        
+    
+    def update_target_prompt(self, target_prompt):
+        clean_label = (  
+                target_prompt
+                .replace('{0} {1}'.format(self.placeholder_token, self.class_name), '{0}')
+                .replace('{0}'.format(self.placeholder_token), '{0}')
+            )
+        self.empty_label_with_class = clean_label.format(self.class_name)
+
     def offload(self):
         self.evaluator.offload()
     

@@ -216,11 +216,12 @@ class BaseTrainer:
         else:
             with autocast(dtype=torch.bfloat16):
                 self._sample_image_eval(batch=batch)
-                self.train_reward_model.score(
-                    batch=batch,
-                )
-                for reward_model in self.val_reward_models:
-                    reward_model.score(batch=batch)
+                if not self.multi_prompt:
+                    self.train_reward_model.score(
+                        batch=batch,
+                    )
+                    for reward_model in self.val_reward_models:
+                        reward_model.score(batch=batch)
 
         return batch
 

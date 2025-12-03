@@ -101,13 +101,6 @@ def main(config):
     train_reward_model.requires_grad_(False)
 
     val_reward_models = []
-    for reward_model_config in config.reward_models["val_models"]:
-        with open_dict(reward_model_config.config):
-            reward_model_config.config = OmegaConf.merge(reward_model_config.config, 
-                                                {"target_prompt": config.datasets.train.target_prompt})
-        reward_model = instantiate(reward_model_config, device=device).to(device)
-        reward_model.requires_grad_(False)
-        val_reward_models.append(reward_model)
 
 
     if config.trainer.multi_prompt:
@@ -117,10 +110,11 @@ def main(config):
         print("FILL IN FOR PROMPTS:", fill_in)
         prompts = [p.format(fill_in) for p in prompts]
         print("ALL PROMPTS:", prompts)
-        global_tracker = GlobalTracker(prompts, writer=writer)
-        for prompt_id, prompt in enumerate([prompts[2]] + prompts[0:2] + prompts[2:]):
+        global_tracker = GlobalTracker(device, prompts, writer=writer)
+        for prompt_id, prompt in enumerate(prompts[:2]):
             print("START PROMPT ID", prompt_id, prompt)
             start_time = datetime.now()
+            train_reward_model.update_target_prompt(prompt)
             global_tracker.set_prompt(prompt_id)
             with open_dict(config.datasets):
                 config.datasets.train = OmegaConf.merge(config.datasets.train,
@@ -132,7 +126,19 @@ def main(config):
             writer.exp.log_metrics({
                 "Time for one prompt": (datetime.now() - start_time).total_seconds(),
             }, step=prompt_id)
+        
+        print("FINISHED ALL PROMPTS")
+        train_reward_model.cpu()
             #torch.cuda.memory._dump_snapshot(f"memory-{prompt_id}.pickle")
+        for reward_model_config in config.reward_models["val_models"]:
+            with open_dict(reward_model_config.config):
+                reward_model_config.config = OmegaConf.merge(reward_model_config.config, 
+                                                    {"target_prompt": config.datasets.train.target_prompt})
+            reward_model = instantiate(reward_model_config, device=device).to(device)
+            reward_model.requires_grad_(False)
+            val_reward_models.append(reward_model)
+        global_tracker.score_val_images(val_reward_models[0])
+        global_tracker.log_total()
     else:
         train(config, device, logger, writer, train_reward_model, val_reward_models)
 
