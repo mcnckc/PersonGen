@@ -716,9 +716,10 @@ class DreamBench(BaseModel):
         print("Deduced batch size:", len(images))
         results = self.db(images)
         print("Received results:", results)
+        reward = results[self.tracked_metrics['CP']] + results[self.tracked_metrics['PF']]
         batch.update({name1:(results[name2].item() if torch.is_tensor(results[name2])
                               else results[name2]) for name1, name2 in self.tracked_metrics.items()})
-        return batch['CP'] + batch['PF']
+        return reward
 
     
 
