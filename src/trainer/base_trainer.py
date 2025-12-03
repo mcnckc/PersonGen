@@ -286,8 +286,8 @@ class BaseTrainer:
 
                 # log current results
                 if batch_idx % self.log_step == 0:
+                    self.writer.set_step((epoch - 1) * self.epoch_len + batch_idx)
                     if not self.multi_prompt:
-                        self.writer.set_step((epoch - 1) * self.epoch_len + batch_idx)
                         self.logger.debug(
                             "Train Epoch: {} {} Loss: {:.6f}".format(
                                 epoch, self._progress(batch_idx), batch["loss"].item()

@@ -108,10 +108,10 @@ def main(config):
         fill_in = config.reward_models.train_model.placeholder_token + ' ' + \
         config.reward_models.train_model.class_name
         print("FILL IN FOR PROMPTS:", fill_in)
-        prompts = [p.format(fill_in) for p in prompts]
+        prompts = [p.format(fill_in) for p in prompts][:1]
         print("ALL PROMPTS:", prompts)
         global_tracker = GlobalTracker(device, prompts, writer=writer)
-        for prompt_id, prompt in enumerate(prompts[:1]):
+        for prompt_id, prompt in enumerate(prompts):
             print("START PROMPT ID", prompt_id, prompt)
             start_time = datetime.now()
             train_reward_model.update_target_prompt(prompt)
