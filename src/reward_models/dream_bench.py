@@ -688,7 +688,7 @@ class DreamBench(BaseModel):
         }
     def update_target_prompt(self, target_prompt):
         self.db.update_target_prompt(target_prompt)
-        
+
     def offload(self):
         self.db.offload()
 
@@ -716,7 +716,7 @@ class DreamBench(BaseModel):
         print("Deduced batch size:", len(images))
         results = self.db(images)
         print("Received results:", results)
-        batch.update({name1:results[name2] for name1, name2 in self.tracked_metrics.items()})
+        batch.update({name1:(results[name2].item() if torch.is_tensor() else results[name2]) for name1, name2 in self.tracked_metrics.items()})
         return batch['CP'] + batch['PF']
 
     

@@ -37,7 +37,7 @@ class GlobalTracker:
                 batch = {"image":image.to(self.device)}
                 reward_model.score(batch)
                 print("SCORING BATCH:", batch)
-                self.val_metrics[pid][step].update({loss_name: loss for loss_name, loss in batch.items() if loss_name != "image"})
+                self.val_metrics[pid][step] = {loss_name: loss for loss_name, loss in batch.items() if loss_name != "image"}
 
     def log_total(self):
         for step in self.metrics[0].keys():
