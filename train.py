@@ -118,7 +118,7 @@ def main(config):
             fill_in = config.reward_models.train_model.placeholder_token + ' ' + \
             config.reward_models.train_model.class_name
             print("FILL IN FOR PROMPTS:", fill_in)
-            prompts = [p.format(fill_in) for p in prompts][:2]
+            prompts = [p.format(fill_in) for p in prompts][:1]
             print("ALL PROMPTS:", prompts)
             global_tracker = GlobalTracker(device, prompts, writer=writer)
             for prompt_id, prompt in enumerate(prompts):
@@ -159,7 +159,7 @@ def main(config):
         else:
             train(config, device, logger, writer, train_reward_model, val_reward_models)
     
-    prof.export_memory_timeline(f"memory.html", device="cuda:0")
+    prof.export_memory_timeline(f"memory2.html", device="cuda:0")
 
     
 
