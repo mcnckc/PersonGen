@@ -40,6 +40,8 @@ class GlobalTracker:
                 self.val_metrics[pid][step] = {loss_name: loss for loss_name, loss in batch.items() if loss_name != "image"}
 
     def log_total(self):
+        for pid in range(len(self.metrics)):
+            print(f"LOG TOTAL FOR {pid}\n", self.metrics[pid])
         for step in self.metrics[0].keys():
             self.writer.exp.log_metrics({
                     name + '_train': sum(self.metrics[i][step][name] for i in range(len(self.metrics))) / len(self.metrics) 
@@ -49,7 +51,7 @@ class GlobalTracker:
             )
         for step in self.val_metrics[0].keys():
             self.writer.exp.log_metrics({
-                    name + '_val': sum(self.val_metrics[i][step][name] for i in range(len(self.val_metrics))) / len(self.metrics)
+                    name + '_val': sum(self.val_metrics[i][step][name] for i in range(len(self.val_metrics))) / len(self.val_metrics)
                     for name in self.val_metrics[0][step].keys()
                 },
                 step=step
