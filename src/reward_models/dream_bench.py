@@ -168,18 +168,8 @@ class ExpEvaluator:
         )
         self.placeholder_token = config.placeholder_token
         self.class_name = config.class_name
-
-        clean_label = (  
-                config.target_prompt
-                .replace('{0} {1}'.format(config.placeholder_token, config.class_name), '{0}')
-                .replace('{0}'.format(config.placeholder_token), '{0}')
-            )
-        empty_label = clean_label.replace('{0} ', '').replace(' {0}', '')
-        self.empty_label_with_class = clean_label.format(config.class_name)
-        self.global_results['target_class_prompt'] = self.empty_label_with_class
-        self.global_results['target_clean_prompt'] = empty_label
-        self.empty_label_features = self.evaluator.get_text_features(empty_label)
-        self.empty_label_with_class_features = self.evaluator.get_text_features(self.empty_label_with_class)
+        self.update_target_prompt(config.target_prompt)
+        
     
     def update_target_prompt(self, target_prompt):
         clean_label = (  
@@ -187,7 +177,12 @@ class ExpEvaluator:
                 .replace('{0} {1}'.format(self.placeholder_token, self.class_name), '{0}')
                 .replace('{0}'.format(self.placeholder_token), '{0}')
             )
+        empty_label = clean_label.replace('{0} ', '').replace(' {0}', '')
         self.empty_label_with_class = clean_label.format(self.class_name)
+        self.global_results['target_class_prompt'] = self.empty_label_with_class
+        self.global_results['target_clean_prompt'] = empty_label
+        self.empty_label_features = self.evaluator.get_text_features(empty_label)
+        self.empty_label_with_class_features = self.evaluator.get_text_features(self.empty_label_with_class)
 
     def offload(self):
         self.evaluator.offload()
@@ -691,7 +686,9 @@ class DreamBench(BaseModel):
             'ClipT':'text_similarities_with_class',
             'PF':'PFs_with_class'
         }
-
+    def update_target_prompt(self, target_prompt):
+        self.db.update_target_prompt(target_prompt)
+        
     def offload(self):
         self.db.offload()
 

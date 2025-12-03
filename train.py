@@ -111,7 +111,7 @@ def main(config):
         prompts = [p.format(fill_in) for p in prompts]
         print("ALL PROMPTS:", prompts)
         global_tracker = GlobalTracker(device, prompts, writer=writer)
-        for prompt_id, prompt in enumerate(prompts[:2]):
+        for prompt_id, prompt in enumerate(prompts[:1]):
             print("START PROMPT ID", prompt_id, prompt)
             start_time = datetime.now()
             train_reward_model.update_target_prompt(prompt)
