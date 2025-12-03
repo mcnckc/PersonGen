@@ -357,9 +357,10 @@ class BaseTrainer:
                     batch,
                     metrics=self.evaluation_metrics,
                 )
-                for loss_name in self.evaluation_loss_names:
-                    loss = batch[loss_name]
-                    self.evaluation_metrics.update(loss_name, loss.item() if torch.is_tensor(loss) else loss)
+                if not self.multi_prompt:
+                    for loss_name in self.evaluation_loss_names:
+                        loss = batch[loss_name]
+                        self.evaluation_metrics.update(loss_name, loss.item() if torch.is_tensor(loss) else loss)
             self.writer.set_step(epoch * self.epoch_len, part)
             print("Log on validation")
             if not self.multi_prompt:
