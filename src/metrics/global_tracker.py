@@ -1,4 +1,5 @@
 import torch
+from datetime import datetime
 from torchvision.transforms import functional as F
 from src.metrics.tracker import MetricTracker
 
@@ -34,10 +35,14 @@ class GlobalTracker:
         for pid, prompt in enumerate(self.prompts):
             reward_model.update_target_prompt(prompt)
             for step, image in self.val_images[pid].items():
+                start_time = datetime.now()
                 batch = {"image":image.to(self.device)}
                 reward_model.score(batch)
-                print("SCORING BATCH:", batch)
+                print(f"SCORING BATCH: of size{len(batch["image"])}", batch)
                 self.val_metrics[pid][step] = {loss_name: loss for loss_name, loss in batch.items() if loss_name != "image"}
+                self.writer.exp.log_metrics({
+                        "One batch validation time": (datetime.now() - start_time).total_seconds(),
+                }, step=0)
 
     def log_total(self):
         for pid in range(len(self.metrics)):
