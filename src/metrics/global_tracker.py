@@ -32,8 +32,10 @@ class GlobalTracker:
 
     def score_val_images(self, reward_model):
         self.val_metrics = [{} for _ in range(len(self.prompts))]
+        num_steps = len(self.val_images[0])
         for pid, prompt in enumerate(self.prompts):
             reward_model.update_target_prompt(prompt)
+            step_id = 0
             for step, image in self.val_images[pid].items():
                 start_time = datetime.now()
                 batch = {"image":image.to(self.device)}
@@ -42,7 +44,8 @@ class GlobalTracker:
                 self.val_metrics[pid][step] = {loss_name: loss for loss_name, loss in batch.items() if loss_name != "image"}
                 self.writer.exp.log_metrics({
                         "One batch validation time": (datetime.now() - start_time).total_seconds(),
-                }, step=pid * 100 + step)
+                }, step=pid * num_steps + step_id)
+                step_id += 1
 
     def log_total(self):
         for pid in range(len(self.metrics)):
