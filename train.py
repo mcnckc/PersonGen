@@ -82,7 +82,7 @@ def main(config):
         config (DictConfig): hydra experiment config.
     """
     #torch.cuda.memory._record_memory_history()
-    
+    """
     with torch.profiler.profile(
         activities=[
             torch.profiler.ProfilerActivity.CPU,
@@ -92,7 +92,8 @@ def main(config):
         profile_memory=True,
         with_stack=True
     ) as prof:
-    
+    """
+    if True:
         set_random_seed(config.trainer.seed)
 
         project_config = OmegaConf.to_container(config)
@@ -120,7 +121,7 @@ def main(config):
             fill_in = config.reward_models.train_model.placeholder_token + ' ' + \
             config.reward_models.train_model.class_name
             print("FILL IN FOR PROMPTS:", fill_in)
-            prompts = [p.format(fill_in) for p in prompts][:2]
+            prompts = [p.format(fill_in) for p in prompts][:3]
             print("ALL PROMPTS:", prompts)
             global_tracker = GlobalTracker(device, prompts, writer=writer)
             for prompt_id, prompt in enumerate(prompts):
@@ -163,9 +164,9 @@ def main(config):
         else:
             train(config, device, logger, writer, train_reward_model, val_reward_models)
         print("Finished, stopping profiler")
-        prof.stop()
+        #prof.stop()
     
-    prof.export_memory_timeline(f"memory2.html", device="cuda:0")
+    #prof.export_memory_timeline(f"memory2.html", device="cuda:0")
 
     
 
