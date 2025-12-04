@@ -164,6 +164,9 @@ def main(config):
             writer.exp.log_metrics({
                 "Total validation time": (datetime.now() - start_time).total_seconds(),
             }, step=0)
+            writer.exp.log_metrics({
+                "Total validation time per image": (datetime.now() - start_time).total_seconds() / ((config.trainer.n_epochs + 1) * len(prompts)),
+            }, step=0)
             global_tracker.log_total()
         else:
             train(config, device, logger, writer, train_reward_model, val_reward_models)
