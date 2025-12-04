@@ -1870,3 +1870,7 @@ chatgpt_position_set = [
     'a {0} sitting in a cozy café',
     'a {0} holding a butterfly gently',
 ]
+
+evaluation_sets.update({
+    "chatgpt": chatgpt_appearance_set + chatgpt_background_set + chatgpt_outfit_set + chatgpt_position_set
+})

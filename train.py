@@ -1,5 +1,6 @@
 import warnings
 import gc
+import random
 from datetime import datetime
 import hydra
 import torch
@@ -121,6 +122,9 @@ def main(config):
 
         if config.trainer.multi_prompt:
             prompts = [p for group in config.trainer.prompt_groups for p in evaluation_sets[group]]
+            if config.trainer.max_prompts >= 0:
+                random.shuffle(prompts)
+                prompts = prompts[:config.trainer.max_prompts]
             fill_in = config.reward_models.train_model.placeholder_token + ' ' + \
             config.reward_models.train_model.class_name
             print("FILL IN FOR PROMPTS:", fill_in)
