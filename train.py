@@ -22,6 +22,7 @@ def train(config, device, logger, writer, train_reward_model,
     
 
     # build stable diffusion models
+    start_time = datetime.now()
     model = instantiate(config.model).to(device)
     if model.use_ema:
         model.ema_unet.to(device)
@@ -50,7 +51,7 @@ def train(config, device, logger, writer, train_reward_model,
         raise ValueError(f"Trainer type must be one of {TRAINER_NAME_TO_CLASS}")
 
     trainer_cls = TRAINER_NAME_TO_CLASS[config.trainer.type]
-
+    print("train preparation took", (datetime.now() - start_time).total_seconds())
     trainer = trainer_cls(
         model=model,
         train_reward_model=train_reward_model,

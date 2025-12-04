@@ -317,7 +317,7 @@ class BaseTrainer:
 
         print("LOG TIME", (datetime.now() - start_time).total_seconds())
         self.writer.exp.log_metrics({"Train Epoch time": 
-                                     (datetime.now() - start_time).total_seconds()}, step=epoch)
+                                     (datetime.now() - start_time).total_seconds()}, step=self.global_tracker.prompt_id * self.epochs + epoch - 1)
         start_time = datetime.now()
         # Run val/test
         for part, dataloader in self.evaluation_dataloaders.items():
