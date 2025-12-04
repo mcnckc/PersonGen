@@ -18,7 +18,7 @@ trainer:
   max_mid_timestep: 40
   log_step: 2
   n_epochs: 2
-  epoch_len: 10
+  epoch_len: 5
   multi_prompt: True
   prompt_groups: ['', 'live']
   train_loss_names: ['loss', 'clip_t', 'clip_i']

@@ -51,7 +51,6 @@ def train(config, device, logger, writer, train_reward_model,
         raise ValueError(f"Trainer type must be one of {TRAINER_NAME_TO_CLASS}")
 
     trainer_cls = TRAINER_NAME_TO_CLASS[config.trainer.type]
-    print("train preparation took", (datetime.now() - start_time).total_seconds())
     trainer = trainer_cls(
         model=model,
         train_reward_model=train_reward_model,
@@ -70,7 +69,10 @@ def train(config, device, logger, writer, train_reward_model,
         multi_prompt=multi_prompt,
         global_tracker=global_tracker
     )
+    print("train preparation took", (datetime.now() - start_time).total_seconds())
+    start_time = datetime.now()
     trainer.train()
+    print("train itself took", (datetime.now() - start_time).total_seconds())
 
 @hydra.main(version_base=None, config_path="src/configs", config_name="refl_train")
 def main(config):
@@ -135,6 +137,7 @@ def main(config):
                                                             {"target_prompt":prompt})
                     config.datasets.val = OmegaConf.merge(config.datasets.val,
                                                                 {"target_prompt":prompt})
+                print("Pre train time:", (datetime.now() - start_time).total_seconds())
                 train(config, device, logger, writer, train_reward_model, val_reward_models, True, global_tracker)
                 gc.collect()
                 torch.cuda.empty_cache()
