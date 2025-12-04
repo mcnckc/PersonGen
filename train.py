@@ -82,7 +82,7 @@ def main(config):
         config (DictConfig): hydra experiment config.
     """
     #torch.cuda.memory._record_memory_history()
-    """
+    
     with torch.profiler.profile(
         activities=[
             torch.profiler.ProfilerActivity.CPU,
@@ -92,74 +92,78 @@ def main(config):
         profile_memory=True,
         with_stack=True
     ) as prof:
-    """
-    set_random_seed(config.trainer.seed)
+    
+        set_random_seed(config.trainer.seed)
 
-    project_config = OmegaConf.to_container(config)
-    logger = setup_saving_and_logging(config)
-    writer = instantiate(config.writer, logger, project_config)
-    if config.trainer.device == "auto":
-        device = "cuda" if torch.cuda.is_available() else "cpu"
-    else:
-        device = config.trainer.device
+        project_config = OmegaConf.to_container(config)
+        logger = setup_saving_and_logging(config)
+        writer = instantiate(config.writer, logger, project_config)
+        if config.trainer.device == "auto":
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+        else:
+            device = config.trainer.device
 
-    with open_dict(config.reward_models.train_model):
-        config.reward_models.train_model = OmegaConf.merge(config.reward_models.train_model,
-                    {"target_prompt": config.datasets.train.target_prompt})
-    print("copied prompt:", config.reward_models.train_model.target_prompt)
-    train_reward_model = instantiate(
-        config.reward_models["train_model"], device=device
-    ).to(device)
-    train_reward_model.requires_grad_(False)
+        with open_dict(config.reward_models.train_model):
+            config.reward_models.train_model = OmegaConf.merge(config.reward_models.train_model,
+                        {"target_prompt": config.datasets.train.target_prompt})
+        print("copied prompt:", config.reward_models.train_model.target_prompt)
+        train_reward_model = instantiate(
+            config.reward_models["train_model"], device=device
+        ).to(device)
+        train_reward_model.requires_grad_(False)
 
-    val_reward_models = []
+        val_reward_models = []
 
 
-    if config.trainer.multi_prompt:
-        prompts = [p for group in config.trainer.prompt_groups for p in evaluation_sets[group]]
-        fill_in = config.reward_models.train_model.placeholder_token + ' ' + \
-        config.reward_models.train_model.class_name
-        print("FILL IN FOR PROMPTS:", fill_in)
-        prompts = [p.format(fill_in) for p in prompts][:3]
-        print("ALL PROMPTS:", prompts)
-        global_tracker = GlobalTracker(device, prompts, writer=writer)
-        for prompt_id, prompt in enumerate(prompts):
-            print("START PROMPT ID", prompt_id, prompt)
-            start_time = datetime.now()
-            train_reward_model.update_target_prompt(prompt)
-            global_tracker.set_prompt(prompt_id)
-            with open_dict(config.datasets):
-                config.datasets.train = OmegaConf.merge(config.datasets.train,
-                                                        {"target_prompt":prompt})
-                config.datasets.val = OmegaConf.merge(config.datasets.val,
+        if config.trainer.multi_prompt:
+            prompts = [p for group in config.trainer.prompt_groups for p in evaluation_sets[group]]
+            fill_in = config.reward_models.train_model.placeholder_token + ' ' + \
+            config.reward_models.train_model.class_name
+            print("FILL IN FOR PROMPTS:", fill_in)
+            prompts = [p.format(fill_in) for p in prompts][:2]
+            print("ALL PROMPTS:", prompts)
+            global_tracker = GlobalTracker(device, prompts, writer=writer)
+            for prompt_id, prompt in enumerate(prompts):
+                print("START PROMPT ID", prompt_id, prompt)
+                start_time = datetime.now()
+                train_reward_model.update_target_prompt(prompt)
+                global_tracker.set_prompt(prompt_id)
+                with open_dict(config.datasets):
+                    config.datasets.train = OmegaConf.merge(config.datasets.train,
                                                             {"target_prompt":prompt})
-            train(config, device, logger, writer, train_reward_model, val_reward_models, True, global_tracker)
-            print("LOGGING:", (datetime.now() - start_time).total_seconds())
+                    config.datasets.val = OmegaConf.merge(config.datasets.val,
+                                                                {"target_prompt":prompt})
+                train(config, device, logger, writer, train_reward_model, val_reward_models, True, global_tracker)
+                gc.collect()
+                torch.cuda.empty_cache()
+                print("LOGGING:", (datetime.now() - start_time).total_seconds())
+                writer.exp.log_metrics({
+                    "Time for one prompt": (datetime.now() - start_time).total_seconds(),
+                }, step=prompt_id)
+            #print(f"Memory allocated: {torch.cuda.memory_allocated() / 1024**2:.2f} MB")
+            print("FINISHED ALL PROMPTS")
+            start_time = datetime.now()
+            train_reward_model.cpu()
+            gc.collect()
+            torch.cuda.empty_cache()
+            #print(f"Memory allocated: {torch.cuda.memory_allocated() / 1024**2:.2f} MB")
+                    #torch.cuda.memory._dump_snapshot(f"memory-{prompt_id}.pickle")
+            for reward_model_config in config.reward_models["val_models"]:
+                with open_dict(reward_model_config.config):
+                    reward_model_config.config = OmegaConf.merge(reward_model_config.config, 
+                                                            {"target_prompt": config.datasets.train.target_prompt})
+                reward_model = instantiate(reward_model_config, device=device).to(device)
+                reward_model.requires_grad_(False)
+                val_reward_models.append(reward_model)
+            global_tracker.score_val_images(val_reward_models[0])
             writer.exp.log_metrics({
-                "Time for one prompt": (datetime.now() - start_time).total_seconds(),
-            }, step=prompt_id)
-        #print(f"Memory allocated: {torch.cuda.memory_allocated() / 1024**2:.2f} MB")
-        print("FINISHED ALL PROMPTS")
-        start_time = datetime.now()
-        train_reward_model.cpu()
-        gc.collect()
-        torch.cuda.empty_cache()
-        #print(f"Memory allocated: {torch.cuda.memory_allocated() / 1024**2:.2f} MB")
-                #torch.cuda.memory._dump_snapshot(f"memory-{prompt_id}.pickle")
-        for reward_model_config in config.reward_models["val_models"]:
-            with open_dict(reward_model_config.config):
-                reward_model_config.config = OmegaConf.merge(reward_model_config.config, 
-                                                        {"target_prompt": config.datasets.train.target_prompt})
-            reward_model = instantiate(reward_model_config, device=device).to(device)
-            reward_model.requires_grad_(False)
-            val_reward_models.append(reward_model)
-        global_tracker.score_val_images(val_reward_models[0])
-        writer.exp.log_metrics({
-            "Total validation time": (datetime.now() - start_time).total_seconds(),
-        }, step=0)
-        global_tracker.log_total()
-    else:
-         train(config, device, logger, writer, train_reward_model, val_reward_models)
+                "Total validation time": (datetime.now() - start_time).total_seconds(),
+            }, step=0)
+            global_tracker.log_total()
+        else:
+            train(config, device, logger, writer, train_reward_model, val_reward_models)
+        print("Finished, stopping profiler")
+        prof.stop()
     
     #prof.export_memory_timeline(f"memory2.html", device="cuda:0")
 
