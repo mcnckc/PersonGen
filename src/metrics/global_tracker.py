@@ -25,10 +25,10 @@ class GlobalTracker:
         else:
             self.metrics[self.prompt_id][step] = {name: metric_tracker.avg(name) for name in metric_tracker.keys()}
             print("LEAK?", self.metrics[self.prompt_id][step])
-        self.writer.exp.log_image(
-                image_data=F.to_pil_image(batch["image"][0].to(torch.float16).cpu()), 
-                name=self.prompts[self.prompt_id], step=step
-        )
+            self.writer.exp.log_image(
+                    image_data=F.to_pil_image(batch["image"][0].to(torch.float16).cpu()), 
+                    name=self.prompts[self.prompt_id], step=step
+            )
 
     def score_val_images(self, reward_model):
         self.val_metrics = [{} for _ in range(len(self.prompts))]

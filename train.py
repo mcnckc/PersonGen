@@ -124,7 +124,7 @@ def main(config):
             fill_in = config.reward_models.train_model.placeholder_token + ' ' + \
             config.reward_models.train_model.class_name
             print("FILL IN FOR PROMPTS:", fill_in)
-            prompts = [p.format(fill_in) for p in prompts][:3]
+            prompts = [p.format(fill_in) for p in prompts]
             print("ALL PROMPTS:", prompts)
             global_tracker = GlobalTracker(device, prompts, writer=writer)
             for prompt_id, prompt in enumerate(prompts):
