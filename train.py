@@ -165,7 +165,7 @@ def main(config):
         print("Finished, stopping profiler")
         prof.stop()
     
-    #prof.export_memory_timeline(f"memory2.html", device="cuda:0")
+    prof.export_memory_timeline(f"memory2.html", device="cuda:0")
 
     
 
