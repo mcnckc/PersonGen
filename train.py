@@ -136,13 +136,6 @@ def main(config):
                 start_time = datetime.now()
                 train_reward_model.update_target_prompt(prompt)
                 global_tracker.set_prompt(prompt_id)
-                clean_label = (
-                    prompt
-                    .replace('{0} {1}'.format(train_reward_model.placeholder_token, train_reward_model.class_name), '{0}')
-                    .replace('{0}'.format(train_reward_model.placeholder_token), '{0}')
-                )
-                prompt = clean_label.format(train_reward_model.class_name)
-                print("SD PROMPT:", prompt)
                 with open_dict(config.datasets):
                     config.datasets.train = OmegaConf.merge(config.datasets.train,
                                                             {"target_prompt":prompt})

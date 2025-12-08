@@ -17,8 +17,8 @@ trainer:
   min_mid_timestep: 30
   max_mid_timestep: 40
   log_step: 2
-  n_epochs: 0
-  epoch_len: 0
+  n_epochs: 8
+  epoch_len: 5
   multi_prompt: True
   prompt_groups: ['', 'live']
   max_prompts: -1
