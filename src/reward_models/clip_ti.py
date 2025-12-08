@@ -14,13 +14,14 @@ MODEL_SUFFIX = "ClipTI"
 
 
 class ClipTI(BaseModel):
-    def __init__(self, device: torch.device, target_prompt, src_img_dir, placeholder_token, class_name):
+    def __init__(self, device: torch.device, target_prompt, src_img_dir, placeholder_token, class_name, t_weight=0.5):
         super().__init__(
             model_suffix=MODEL_SUFFIX, reward_scale_factor=1, reward_offset=0
         )
 
         model, transform = clip.load(MODEL_NAME, device=device, jit=False)
         self.device = device
+        self.t_weight = t_weight
         self.model = model
         self.clip_resolution = 224
         self.tensor_preproc = transforms.Compose(
@@ -93,4 +94,4 @@ class ClipTI(BaseModel):
         clipI = clipI.mean()
         batch["clip_t"] = clipT
         batch["clip_i"] = clipI
-        return clipI * clipT
+        return clipI * (1 - self.t_weight) + clipT * self.t_weight

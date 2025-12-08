@@ -3,6 +3,7 @@ train_model:
   src_img_dir: "dog"
   placeholder_token: "sks"
   class_name: "dog"
+  t_weight: 0.5
 val_models:
   - _target_: src.reward_models.DreamBench
     config:
