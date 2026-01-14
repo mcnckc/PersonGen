@@ -202,5 +202,5 @@ import clip
 
 if __name__ == "__main__":
     MODEL_NAME = "ViT-B/32"
-    model, transform = clip.load(MODEL_NAME, device="cpu", jit=False)
+    model, transform = clip.load(MODEL_NAME, device="cuda", jit=False)
     #main()
