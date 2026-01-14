@@ -104,9 +104,12 @@ def main(config):
         logger = setup_saving_and_logging(config)
         writer = instantiate(config.writer, logger, project_config)
         if config.trainer.device == "auto":
+            print("Auto")
             device = "cuda" if torch.cuda.is_available() else "cpu"
         else:
+            print(f"Device is {config.trainer.device}")
             device = config.trainer.device
+            print(device)
 
         with open_dict(config.reward_models.train_model):
             config.reward_models.train_model = OmegaConf.merge(config.reward_models.train_model,
