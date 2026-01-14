@@ -198,6 +198,9 @@ def main(config):
 
     
 
+import clip
 
 if __name__ == "__main__":
-    main()
+    MODEL_NAME = "ViT-B/32"
+    model, transform = clip.load(MODEL_NAME, device="cuda", jit=False)
+    #main()
