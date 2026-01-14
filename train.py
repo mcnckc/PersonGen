@@ -164,12 +164,26 @@ def main(config):
                 reward_model = instantiate(reward_model_config, device=device).to(device)
                 reward_model.requires_grad_(False)
                 val_reward_models.append(reward_model)
+            val_reward_models[0].zero_time_stats()
+
             global_tracker.score_val_images(val_reward_models[0])
             writer.exp.log_metrics({
                 "Total validation time": (datetime.now() - start_time).total_seconds(),
             }, step=0)
             writer.exp.log_metrics({
                 "Total validation time per image": (datetime.now() - start_time).total_seconds() / ((config.trainer.n_epochs + 1) * len(prompts)),
+            }, step=0)
+            writer.exp.log_metrics({
+                "Total pf calls": val_reward_models[0].db.pf_calls,
+            }, step=0)
+            writer.exp.log_metrics({
+                "Total cp calls": val_reward_models[0].db.cp_calls,
+            }, step=0)
+            writer.exp.log_metrics({
+                "Total clean pf time": val_reward_models[0].db.pf_clean_time,
+            }, step=0)
+            writer.exp.log_metrics({
+                "Total clean cp time": val_reward_models[0].db.cp_clean_time,
             }, step=0)
             global_tracker.log_total()
         else:

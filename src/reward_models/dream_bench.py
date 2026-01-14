@@ -6,7 +6,7 @@ import requests
 from typing import List, Optional, Dict, Tuple, Union
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from torchvision.transforms import functional as F
-
+from datetime import datetime
 import regex
 import tqdm.autonotebook as tqdm
 
@@ -519,7 +519,12 @@ class DreamBenchPPEvaluator(ExpEvaluator):
         #print(f"PF inputs:{PF_inputs}")
         #sampling_params = self.sampling_params.clone()
         #sampling_params.seed = seed
+        self.pf_calls += len(target_images_batch)
+        print(f"PF batch size:{len(target_images_batch)}")
+        start_time = datetime.now()
         PF_responses_ids = self.llm_model.generate(**PF_inputs, generation_config=self.sampling_params)
+        self.pf_clean_time += (datetime.now() - start_time).total_seconds()
+
         PF_responses_ids_trimmed = [
             out_ids[len(in_ids):] for in_ids, out_ids in zip(PF_inputs, PF_responses_ids)
         ]
@@ -542,7 +547,12 @@ class DreamBenchPPEvaluator(ExpEvaluator):
         #print(f"CP inputs:{CP_inputs}")
         #sampling_params = self.sampling_params.clone()
         #sampling_params.seed = seed
+        self.cp_calls += len(target_images_batch)
+        print(f"CP batch size:{len(target_images_batch)}")
+        start_time = datetime.now()
         CP_responses_ids = self.llm_model.generate(**CP_inputs, generation_config=self.sampling_params)
+        self.cp_clean_time += (datetime.now() - start_time).total_seconds()
+
         CP_responses_ids_trimmed = [
             out_ids[len(in_ids):] for in_ids, out_ids in zip(CP_inputs, CP_responses_ids)
         ]
@@ -557,12 +567,18 @@ class DreamBenchPPEvaluator(ExpEvaluator):
             return CP_scores, CP_texts
         return CP_scores
     
+    def zero_time_stats(self):
+        self.pf_calls = 0
+        self.cp_calls = 0
+        self.pf_clean_time = 0
+        self.cp_clean_time = 0
+
     @torch.no_grad()
     def __call__(self, images, verbose=False, seeds=(179, )):  
         base_results = super().__call__(images, verbose=verbose)
         base_results |= self.global_results
         CP_to_process, PF_to_process = [], []
-        
+        print(f"DB call {len(images)} images")
         results = {}
 
         for train_image in self.train_images:
