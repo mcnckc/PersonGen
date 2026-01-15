@@ -196,11 +196,8 @@ def main(config):
     
     #prof.export_memory_timeline(f"memory2.html", device="cuda:0")
 
-    
-
-import clip
 
 if __name__ == "__main__":
-    MODEL_NAME = "ViT-B/32"
-    model, transform = clip.load(MODEL_NAME, device="cuda", jit=False)
-    #main()
+    #MODEL_NAME = "ViT-B/32"
+    #model, transform = clip.load(MODEL_NAME, device="cuda", jit=False)
+    main()
