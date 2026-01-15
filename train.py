@@ -167,7 +167,7 @@ def main(config):
                 reward_model = instantiate(reward_model_config, device=device).to(device)
                 reward_model.requires_grad_(False)
                 val_reward_models.append(reward_model)
-            val_reward_models[0].db.zero_time_stats()
+            #val_reward_models[0].db.zero_time_stats()
 
             global_tracker.score_val_images(val_reward_models[0])
             writer.exp.log_metrics({
