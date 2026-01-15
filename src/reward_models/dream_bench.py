@@ -297,7 +297,7 @@ class DreamBenchPPEvaluator(ExpEvaluator):
         determenistic=True
     ) -> None:
         super().__init__(device, config)
-        
+        self.zero_time_stats(self)
         device_idx = torch.device(device).index
         old_visible_devices = os.environ.get("CUDA_VISIBLE_DEVICES")
         os.environ["CUDA_VISIBLE_DEVICES"] = '0' if device_idx is None else str(device_idx)
