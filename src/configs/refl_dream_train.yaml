@@ -21,7 +21,7 @@ trainer:
   epoch_len: 5
   multi_prompt: True
   prompt_groups: ['', 'live']
-  max_prompts: 4
+  max_prompts: 1
   train_loss_names: ['loss', 'clip_t', 'clip_i']
   eval_loss_names: ['source_ClipI', 'source_Dino', 'source_CP', 'ClipI', 'Dino', 'CP', 'ClipT', 'PF']
   resume_from: null # null or path to the checkpoint dir with *.pth and config.yaml
