@@ -524,7 +524,8 @@ class DreamBenchPPEvaluator(ExpEvaluator):
         start_time = datetime.now()
         PF_responses_ids = self.llm_model.generate(**PF_inputs, generation_config=self.sampling_params)
         self.pf_clean_time += (datetime.now() - start_time).total_seconds()
-
+        for out_ids in PF_responses_ids:
+            print(f"PF Ans tokens: {len(out_ids)}")
         PF_responses_ids_trimmed = [
             out_ids[len(in_ids):] for in_ids, out_ids in zip(PF_inputs, PF_responses_ids)
         ]
@@ -532,6 +533,8 @@ class DreamBenchPPEvaluator(ExpEvaluator):
             PF_responses_ids_trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
         )
         print("GOT PF TEXTS")
+        for text in PF_texts:
+            print(f"PF Ans length: {len(text)}")
         print(PF_texts)
         #PF_texts = [response.outputs[0].text for response in PF_responses]
         PF_scores = [self._get_score(text) for text in PF_texts]
@@ -553,13 +556,18 @@ class DreamBenchPPEvaluator(ExpEvaluator):
         CP_responses_ids = self.llm_model.generate(**CP_inputs, generation_config=self.sampling_params)
         self.cp_clean_time += (datetime.now() - start_time).total_seconds()
 
+        for out_ids in CP_responses_ids:
+            print(f"CP Ans tokens: {len(out_ids)}")
+
         CP_responses_ids_trimmed = [
             out_ids[len(in_ids):] for in_ids, out_ids in zip(CP_inputs, CP_responses_ids)
         ]
         CP_texts = self.processor.batch_decode(
             CP_responses_ids_trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
         )
-        #print(CP_texts)
+        for text in CP_texts:
+            print(f"CP Ans length: {len(text)}")
+        print("GOT CP text", CP_texts)
         #CP_texts = [response.outputs[0].text for response in CP_responses]
         CP_scores = [self._get_score(text) for text in CP_texts]
         
