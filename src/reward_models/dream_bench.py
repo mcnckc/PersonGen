@@ -292,7 +292,7 @@ class DreamBenchPPEvaluator(ExpEvaluator):
     def __init__(
         self, device,
         config, 
-        llm_model='Qwen/Qwen3-VL-30B-A3B-Instruct', 
+        llm_model="Qwen/Qwen3-30B-A3B-Instruct-2507", 
         prompts_path=None,
         determenistic=True
     ) -> None:
@@ -303,7 +303,7 @@ class DreamBenchPPEvaluator(ExpEvaluator):
         os.environ["CUDA_VISIBLE_DEVICES"] = '0' if device_idx is None else str(device_idx)
         self.qwen_batch = config.qwen_batch
         self.llm_model  = Qwen3VLMoeForConditionalGeneration.from_pretrained(
-            "Qwen/Qwen3-VL-30B-A3B-Instruct",
+            llm_model,
             dtype=torch.bfloat16
         ).to(self.device)
         
