@@ -292,7 +292,7 @@ class DreamBenchPPEvaluator(ExpEvaluator):
     def __init__(
         self, device,
         config, 
-        llm_model="Qwen/Qwen3-30B-A3B-Instruct-2507", 
+        llm_model="Qwen/Qwen3-VL-30B-A3B-Instruct", 
         prompts_path=None,
         determenistic=True
     ) -> None:
@@ -304,7 +304,8 @@ class DreamBenchPPEvaluator(ExpEvaluator):
         self.qwen_batch = config.qwen_batch
         self.llm_model  = Qwen3VLMoeForConditionalGeneration.from_pretrained(
             llm_model,
-            dtype=torch.bfloat16
+            dtype=torch.bfloat16,
+            attn_implementation="flash_attention_2",
         ).to(self.device)
         
         if determenistic:
