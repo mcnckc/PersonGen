@@ -97,6 +97,8 @@ def main(config):
         with_stack=True
     ) as prof:
     """
+    gc.collect()
+    torch.cuda.empty_cache()
     if True:
         set_random_seed(config.trainer.seed)
 
