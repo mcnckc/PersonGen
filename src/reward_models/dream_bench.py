@@ -461,7 +461,6 @@ class DreamBenchPPEvaluator(ExpEvaluator):
                                                     add_generation_prompt=True, 
                                                     return_dict=True, 
                                                     tokenize=True,
-                                                    padding=True,
                                                     padding="longest",
                                                     truncation=True,
                                                     return_tensors="pt")
