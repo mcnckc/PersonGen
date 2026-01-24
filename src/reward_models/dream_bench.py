@@ -327,8 +327,6 @@ class DreamBenchPPEvaluator(ExpEvaluator):
                 temperature=0,
                 top_k=-1,
                 max_new_tokens=1024,
-                pad_token_id=self.llm_model.generation_config.eos_token_id,
-                eos_token_id=self.llm_model.generation_config.eos_token_id,
                 use_cache=True,
             )
         else:
@@ -343,6 +341,8 @@ class DreamBenchPPEvaluator(ExpEvaluator):
             )
         
         self.processor = AutoProcessor.from_pretrained(llm_model, trust_remote_code=True)
+
+        print(f"ATTN USED:{self.llm_model.config._attn_implementation}")
 
         self.prompts = {}
         for key, file_name in self._PROMPTS.items():
@@ -462,6 +462,8 @@ class DreamBenchPPEvaluator(ExpEvaluator):
                                                     return_dict=True, 
                                                     tokenize=True,
                                                     padding=True,
+                                                    padding="longest",
+                                                    truncation=True,
                                                     return_tensors="pt")
         inputs = {k: v.to(self.device) for k, v in inputs.items()}
         return inputs
@@ -528,6 +530,7 @@ class DreamBenchPPEvaluator(ExpEvaluator):
         except Exception:
             return None
     
+    @torch.inference_mode()
     def get_prompt_following(
         self, prompts_batch: List[str], target_images_batch: List[Image], return_texts: bool = False, seed=6417,
     ) -> Union[List[Optional[int]], Tuple[List[Optional[int]], List[str]]]:
@@ -559,6 +562,7 @@ class DreamBenchPPEvaluator(ExpEvaluator):
             return PF_scores, PF_texts
         return PF_scores
 
+    @torch.inference_mode()
     def get_concept_preservation(
         self, source_images_batch: List[Image], target_images_batch: List[Image], return_texts: bool = False, seed=6417,
     ) -> Union[List[Optional[int]], Tuple[List[Optional[int]], List[str]]]:
