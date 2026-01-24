@@ -302,11 +302,23 @@ class DreamBenchPPEvaluator(ExpEvaluator):
         old_visible_devices = os.environ.get("CUDA_VISIBLE_DEVICES")
         os.environ["CUDA_VISIBLE_DEVICES"] = '0' if device_idx is None else str(device_idx)
         self.qwen_batch = config.qwen_batch
+
+        torch.backends.cuda.enable_flash_sdp(True)
+        torch.backends.cuda.enable_mem_efficient_sdp(True)
+        torch.backends.cuda.enable_math_sdp(False)
+
         self.llm_model  = Qwen3VLMoeForConditionalGeneration.from_pretrained(
             llm_model,
             dtype=torch.bfloat16,
             attn_implementation="flash_attention_2",
-        ).to(self.device)
+            device_map="auto" if device == "cuda" else None,
+            trust_remote_code=True
+        )
+
+        if not hasattr(self.llm_model, "hf_device_map"):
+            self.llm_model.to(self.device)
+        
+        self.llm_model.eval()
         
         if determenistic:
             # Deterministic sampling: Qwen3-VL-30B-A3B-Instruct-FP8 vLLM example
@@ -314,7 +326,10 @@ class DreamBenchPPEvaluator(ExpEvaluator):
                 do_sample=False,
                 temperature=0,
                 top_k=-1,
-                max_new_tokens=1024
+                max_new_tokens=1024,
+                pad_token_id=self.llm_model.generation_config.eos_token_id,
+                eos_token_id=self.llm_model.generation_config.eos_token_id,
+                use_cache=True,
             )
         else:
             # Qwen3 non-thinking or Qwen3-VL-30B-A3B-Instruct generation_config.json
@@ -327,7 +342,7 @@ class DreamBenchPPEvaluator(ExpEvaluator):
                 max_new_tokens=1024
             )
         
-        self.processor = AutoProcessor.from_pretrained(llm_model)
+        self.processor = AutoProcessor.from_pretrained(llm_model, trust_remote_code=True)
 
         self.prompts = {}
         for key, file_name in self._PROMPTS.items():
