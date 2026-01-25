@@ -516,12 +516,12 @@ class DreamBenchPPEvaluator(ExpEvaluator):
             all_messages.append(messages)
         #print(f"Batch length:{len(source_images_batch)}")
         inputs = self._process_messages_batch(all_messages)
-        """
+        print("CP inputs:")
         for k, v in inputs.items():
             print(f"CP {k} has shape {v.shape}")
         for k, v in inputs.items():
             print(f"CP type of {k} is {v.dtype}")
-        """
+        
         return inputs
 
     @staticmethod
