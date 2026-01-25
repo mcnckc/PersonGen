@@ -1,4 +1,6 @@
+import os
 import torch
+import pickle
 from datetime import datetime
 from torchvision.transforms import functional as F
 from src.metrics.tracker import MetricTracker
@@ -47,7 +49,7 @@ class GlobalTracker:
                 }, step=pid * num_steps + step_id)
                 step_id += 1
 
-    def log_total(self):
+    def log_total(self, save_dir=None, file_name=None):
         for pid in range(len(self.metrics)):
             print(f"LOG TOTAL FOR {pid}\n", self.metrics[pid])
         for step in self.metrics[0].keys():
@@ -64,5 +66,10 @@ class GlobalTracker:
                 },
                 step=step
             )
+        if save_dir is not None:
+            metrics = {"train": self.metrics, "val":self.val_metrics}
+            os.makedirs(save_dir, exist_ok=True)
+            with open(f'{save_dir}/{file_name}', 'wb') as file_handle:
+                pickle.dump(metrics, file_handle)
 
     

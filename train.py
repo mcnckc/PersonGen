@@ -193,7 +193,7 @@ def main(config):
             writer.exp.log_metrics({
                 "Total clean cp time": val_reward_models[0].db.cp_clean_time,
             }, step=0)
-            global_tracker.log_total()
+            global_tracker.log_total(save_dir='db_metrics', file_name=config.model.db_lr+'-'+config.model.db_steps+'.pkl')
         else:
             train(config, device, logger, writer, train_reward_model, val_reward_models)
         print("Finished, stopping profiler")

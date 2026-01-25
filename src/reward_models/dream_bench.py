@@ -516,12 +516,13 @@ class DreamBenchPPEvaluator(ExpEvaluator):
             all_messages.append(messages)
         #print(f"Batch length:{len(source_images_batch)}")
         inputs = self._process_messages_batch(all_messages)
+        """
         print("CP inputs:")
         for k, v in inputs.items():
             print(f"CP {k} has shape {v.shape}")
         for k, v in inputs.items():
             print(f"CP type of {k} is {v.dtype}")
-        
+        """
         return inputs
 
     @staticmethod
@@ -553,7 +554,7 @@ class DreamBenchPPEvaluator(ExpEvaluator):
         for out_ids in PF_responses_ids:
             print(f"PF Ans tokens: {len(out_ids)}")
         PF_responses_ids_trimmed = [
-            out_ids[len(in_ids):] for in_ids, out_ids in zip(PF_inputs, PF_responses_ids)
+            out_ids[input['input_ids'].shape[-1]:] for input, out_ids in zip(PF_inputs, PF_responses_ids)
         ]
         PF_texts = self.processor.batch_decode(
             PF_responses_ids_trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
@@ -587,7 +588,7 @@ class DreamBenchPPEvaluator(ExpEvaluator):
             print(f"CP Ans tokens: {len(out_ids)}")
 
         CP_responses_ids_trimmed = [
-            out_ids[len(in_ids):] for in_ids, out_ids in zip(CP_inputs, CP_responses_ids)
+            out_ids[input['input_ids'].shape[-1]:] for input, out_ids in zip(CP_inputs, CP_responses_ids)
         ]
         CP_texts = self.processor.batch_decode(
             CP_responses_ids_trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
