@@ -170,10 +170,13 @@ def main(config):
                 reward_model.requires_grad_(False)
                 val_reward_models.append(reward_model)
             #val_reward_models[0].db.zero_time_stats()
-
+            mid_time = datetime.now()
             global_tracker.score_val_images(val_reward_models[0])
             writer.exp.log_metrics({
                 "Total validation time": (datetime.now() - start_time).total_seconds(),
+            }, step=0)
+            writer.exp.log_metrics({
+                "Clean validation time": (datetime.now() - mid_time).total_seconds(),
             }, step=0)
             writer.exp.log_metrics({
                 "Total validation time per image": (datetime.now() - start_time).total_seconds() / ((config.trainer.n_epochs + 1) * len(prompts)),

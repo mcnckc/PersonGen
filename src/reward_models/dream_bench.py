@@ -315,6 +315,14 @@ class DreamBenchPPEvaluator(ExpEvaluator):
             trust_remote_code=True
         )
 
+        print("Compiling model with torch.compile...")
+        self.llm_model = torch.compile(
+            self.llm_model,
+            mode="reduce-overhead",
+            fullgraph=False,
+            dynamic=False
+        )
+        print("Compiled model with torch.compile")
         if not hasattr(self.llm_model, "hf_device_map"):
             self.llm_model.to(self.device)
         
