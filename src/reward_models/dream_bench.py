@@ -553,9 +553,15 @@ class DreamBenchPPEvaluator(ExpEvaluator):
         self.pf_clean_time += (datetime.now() - start_time).total_seconds()
         for out_ids in PF_responses_ids:
             print(f"PF Ans tokens: {len(out_ids)}")
+        
+        input_len = PF_inputs['input_ids'].shape[-1]
         PF_responses_ids_trimmed = [
-            out_ids[input['input_ids'].shape[-1]:] for input, out_ids in zip(PF_inputs, PF_responses_ids)
+            out_ids[input_len:] for out_ids in PF_responses_ids
         ]
+        print("Clean PF tokens")
+        for ids in PF_responses_ids_trimmed:
+            print(len(ids))
+
         PF_texts = self.processor.batch_decode(
             PF_responses_ids_trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
         )
@@ -586,10 +592,13 @@ class DreamBenchPPEvaluator(ExpEvaluator):
 
         for out_ids in CP_responses_ids:
             print(f"CP Ans tokens: {len(out_ids)}")
-
+        input_len = CP_inputs['input_ids'].shape[-1]
         CP_responses_ids_trimmed = [
-            out_ids[input['input_ids'].shape[-1]:] for input, out_ids in zip(CP_inputs, CP_responses_ids)
+            out_ids[input_len:] for out_ids in CP_responses_ids
         ]
+        print("Clean CP tokens")
+        for ids in CP_responses_ids_trimmed:
+            print(len(ids))
         CP_texts = self.processor.batch_decode(
             CP_responses_ids_trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
         )
