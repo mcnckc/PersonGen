@@ -130,8 +130,11 @@ def main(config):
             if config.trainer.max_prompts >= 0:
                 random.shuffle(prompts)
                 prompts = prompts[:config.trainer.max_prompts]
-            fill_in = config.reward_models.train_model.placeholder_token + ' ' + \
-            config.reward_models.train_model.class_name
+            if config.model.clean_model:
+                fill_in = config.reward_models.train_model.class_name
+            else:
+                fill_in = config.reward_models.train_model.placeholder_token + ' ' + \
+                config.reward_models.train_model.class_name
             print("FILL IN FOR PROMPTS:", fill_in)
             prompts = [p.format(fill_in) for p in prompts]
             print("ALL PROMPTS:", prompts)
@@ -193,7 +196,10 @@ def main(config):
             writer.exp.log_metrics({
                 "Total clean cp time": val_reward_models[0].db.cp_clean_time,
             }, step=0)
-            global_tracker.log_total(save_dir='db_metrics', file_name=config.db_lr+'-'+config.db_steps+'.pkl')
+            if config.trainer.save_metrics:
+                global_tracker.log_total(save_dir='db_metrics', file_name=config.db_lr+'-'+config.db_steps+'.pkl')
+            else:
+                global_tracker.log_total()
         else:
             train(config, device, logger, writer, train_reward_model, val_reward_models)
         print("Finished, stopping profiler")

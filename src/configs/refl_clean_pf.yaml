@@ -17,11 +17,11 @@ trainer:
   min_mid_timestep: 30
   max_mid_timestep: 40
   log_step: 2
-  n_epochs: 8
-  epoch_len: 5
+  n_epochs: 0
+  epoch_len: 0
   multi_prompt: True
-  prompt_groups: ['chatgpt']
-  max_prompts: 30
+  prompt_groups: ['', 'live']
+  max_prompts: -1
   train_loss_names: ['loss', 'clip_t', 'clip_i']
   eval_loss_names: ['source_ClipI', 'source_Dino', 'source_CP', 'ClipI', 'Dino', 'CP', 'ClipT', 'PF']
   resume_from: null # null or path to the checkpoint dir with *.pth and config.yaml
@@ -31,6 +31,7 @@ trainer:
   save_period: 5 # checkpoint each save_period epochs in addition to the best epoch
   early_stop: ${trainer.n_epochs} # epochs for early stopping
   save_dir: "saved"
+  save_metrics: False
   seed: 1
   mse_loss_scale: 0
   do_classifier_free_guidance: True

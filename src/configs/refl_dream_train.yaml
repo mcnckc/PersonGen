@@ -31,6 +31,7 @@ trainer:
   save_period: 5 # checkpoint each save_period epochs in addition to the best epoch
   early_stop: ${trainer.n_epochs} # epochs for early stopping
   save_dir: "saved"
+  save_metrics: True
   seed: 1
   mse_loss_scale: 0
   do_classifier_free_guidance: True

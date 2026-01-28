@@ -1,3 +1,4 @@
 _target_: src.models.StableDiffusion
 pretrained_model_name: 'stable-diffusion-v1-5/stable-diffusion-v1-5'
+clean_model: False
 guidance_scale: 6.5
