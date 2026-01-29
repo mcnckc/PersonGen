@@ -37,3 +37,5 @@ trainer:
   do_classifier_free_guidance: True
   detach_main_path: False
   calculate_initial_model_metrics: True
+  
+clean_model: True

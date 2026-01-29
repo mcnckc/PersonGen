@@ -130,7 +130,7 @@ def main(config):
             if config.trainer.max_prompts >= 0:
                 random.shuffle(prompts)
                 prompts = prompts[:config.trainer.max_prompts]
-            if config.model.clean_model:
+            if config.clean_model:
                 fill_in = config.reward_models.train_model.class_name
             else:
                 fill_in = config.reward_models.train_model.placeholder_token + ' ' + \
