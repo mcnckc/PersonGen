@@ -348,7 +348,7 @@ class DreamBenchPPEvaluator(ExpEvaluator):
                 max_new_tokens=1024
             )
         
-        self.processor = AutoProcessor.from_pretrained(llm_model, trust_remote_code=True)
+        self.processor = AutoProcessor.from_pretrained(llm_model)
 
         print(f"ATTN USED:{self.llm_model.config._attn_implementation}")
 
