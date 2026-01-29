@@ -17,7 +17,7 @@ trainer:
   min_mid_timestep: 30
   max_mid_timestep: 40
   log_step: 2
-  n_epochs: 8
+  n_epochs: 10
   epoch_len: 3
   multi_prompt: True
   prompt_groups: ['', 'live']
@@ -37,5 +37,5 @@ trainer:
   do_classifier_free_guidance: True
   detach_main_path: False
   calculate_initial_model_metrics: True
-  
+
 clean_model: False
