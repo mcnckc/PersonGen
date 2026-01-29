@@ -17,6 +17,7 @@ class GlobalTracker:
         self.metrics = [{} for _ in range(len(self.prompts))]
         self.val_images = [{} for _ in range(len(self.prompts))]
         self.writer = writer
+        self.image_used_steps = [{} for _ in range(len(self.prompts))]
     
     def set_prompt(self, id: int):
         self.prompt_id = id
@@ -26,11 +27,12 @@ class GlobalTracker:
             self.val_images[self.prompt_id][step] = batch["image"].to(torch.float16).detach().cpu()
         else:
             self.metrics[self.prompt_id][step] = {name: metric_tracker.avg(name) for name in metric_tracker.keys()}
-            print("LEAK?", self.metrics[self.prompt_id][step])
+        if step not in self.image_used_steps[self.prompt_id]:
             self.writer.exp.log_image(
-                    image_data=F.to_pil_image(batch["image"][0].to(torch.float16).cpu()), 
-                    name=self.prompts[self.prompt_id], step=step
+                        image_data=F.to_pil_image(batch["image"][0].to(torch.float16).cpu()), 
+                        name=self.prompts[self.prompt_id], step=step
             )
+            self.image_used_steps[self.prompt_id][step] = True
 
     def score_val_images(self, reward_model):
         self.val_metrics = [{} for _ in range(len(self.prompts))]
