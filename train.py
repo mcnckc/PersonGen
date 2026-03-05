@@ -115,7 +115,7 @@ def main(config):
 
         with open_dict(config.reward_models.train_model):
             config.reward_models.train_model = OmegaConf.merge(config.reward_models.train_model,
-                        {"target_prompt": config.datasets.train.target_prompt})
+                        {"target_prompt": config.datasets.train.target_prompts[0]})
         print("copied prompt:", config.reward_models.train_model.target_prompt)
         train_reward_model = instantiate(
             config.reward_models["train_model"], device=device
