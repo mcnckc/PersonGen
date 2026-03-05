@@ -142,7 +142,7 @@ def main(config):
             if config.trainer.cross_prompt:
                 main_prompt = config.trainer.main_prompt
                 main_id = prompts.index(main_prompt)
-                print("START PROMPT ID", main_id, prompt)
+                print("START PROMPT ID", main_id, main_prompt)
                 start_time = datetime.now()
                 train_reward_model.update_target_prompt(main_prompt)
                 global_tracker.set_prompt(main_id)
