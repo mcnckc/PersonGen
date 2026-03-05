@@ -139,24 +139,44 @@ def main(config):
             prompts = [p.format(fill_in) for p in prompts]
             print("ALL PROMPTS:", prompts)
             global_tracker = GlobalTracker(device, prompts, writer=writer)
-            for prompt_id, prompt in enumerate(prompts):
-                print("START PROMPT ID", prompt_id, prompt)
+            if config.train.cross_prompt:
+                main_prompt = config.train.main_prompt
+                main_id = prompts.index(main_prompt)
+                print("START PROMPT ID", main_id, prompt)
                 start_time = datetime.now()
-                train_reward_model.update_target_prompt(prompt)
-                global_tracker.set_prompt(prompt_id)
+                train_reward_model.update_target_prompt(main_prompt)
+                global_tracker.set_prompt(main_id)
                 with open_dict(config.datasets):
                     config.datasets.train = OmegaConf.merge(config.datasets.train,
-                                                            {"target_prompt":prompt})
+                                                                {"target_prompts":main_prompt})
                     config.datasets.val = OmegaConf.merge(config.datasets.val,
-                                                                {"target_prompt":prompt})
-                print("Pre train time:", (datetime.now() - start_time).total_seconds())
+                                                                    {"target_prompts":prompts})
                 train(config, device, logger, writer, train_reward_model, val_reward_models, True, global_tracker)
                 gc.collect()
                 torch.cuda.empty_cache()
                 print("LOGGING:", (datetime.now() - start_time).total_seconds())
                 writer.exp.log_metrics({
                     "Time for one prompt": (datetime.now() - start_time).total_seconds(),
-                }, step=prompt_id)
+                }, step=main_id)
+            else:
+                for prompt_id, prompt in enumerate(prompts):
+                    print("START PROMPT ID", prompt_id, prompt)
+                    start_time = datetime.now()
+                    train_reward_model.update_target_prompt(prompt)
+                    global_tracker.set_prompt(prompt_id)
+                    with open_dict(config.datasets):
+                        config.datasets.train = OmegaConf.merge(config.datasets.train,
+                                                                {"target_prompt":prompt})
+                        config.datasets.val = OmegaConf.merge(config.datasets.val,
+                                                                    {"target_prompt":prompt})
+                    print("Pre train time:", (datetime.now() - start_time).total_seconds())
+                    train(config, device, logger, writer, train_reward_model, val_reward_models, True, global_tracker)
+                    gc.collect()
+                    torch.cuda.empty_cache()
+                    print("LOGGING:", (datetime.now() - start_time).total_seconds())
+                    writer.exp.log_metrics({
+                        "Time for one prompt": (datetime.now() - start_time).total_seconds(),
+                    }, step=prompt_id)
             #print(f"Memory allocated: {torch.cuda.memory_allocated() / 1024**2:.2f} MB")
             print("FINISHED ALL PROMPTS")
             start_time = datetime.now()
@@ -168,7 +188,7 @@ def main(config):
             for reward_model_config in config.reward_models["val_models"]:
                 with open_dict(reward_model_config.config):
                     reward_model_config.config = OmegaConf.merge(reward_model_config.config, 
-                                                            {"target_prompt": config.datasets.train.target_prompt})
+                                                            {"target_prompt": config.datasets.train.target_prompts[0]})
                 reward_model = instantiate(reward_model_config, device=device).to(device)
                 reward_model.requires_grad_(False)
                 val_reward_models.append(reward_model)
@@ -197,9 +217,9 @@ def main(config):
                 "Total clean cp time": val_reward_models[0].db.cp_clean_time,
             }, step=0)
             if config.trainer.save_metrics:
-                global_tracker.log_total(save_dir='db_metrics', file_name=config.db_lr+'-'+config.db_steps+'.pkl')
+                global_tracker.log_total(save_dir='db_metrics', file_name=config.db_lr+'-'+config.db_steps+'.pkl', main_id=main_id if config.train.cross_prompt else None)
             else:
-                global_tracker.log_total()
+                global_tracker.log_total(main_id=main_id if config.train.cross_prompt else None)
         else:
             train(config, device, logger, writer, train_reward_model, val_reward_models)
         print("Finished, stopping profiler")

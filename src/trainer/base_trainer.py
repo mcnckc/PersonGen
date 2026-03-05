@@ -369,7 +369,7 @@ class BaseTrainer:
                     batch_idx, batch, part 
                 )  # log only the last batch during inference
             else:
-                self.global_tracker.update(self.evaluation_metrics, batch, self.writer.step, val=True)
+                self.global_tracker.update(self.evaluation_metrics, batch, self.writer.step, prompt_id=batch_idx, val=True)
 
         return self.evaluation_metrics.result()
 

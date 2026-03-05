@@ -22,17 +22,19 @@ class GlobalTracker:
     def set_prompt(self, id: int):
         self.prompt_id = id
 
-    def update(self, metric_tracker: MetricTracker, batch, step: int, val: bool = False):
+    def update(self, metric_tracker: MetricTracker, batch, step: int, prompt_id: int = None, val: bool = False):
+        if prompt_id is None:
+            prompt_id = self.prompt_id
         if val:
-            self.val_images[self.prompt_id][step] = batch["image"].to(torch.float16).detach().cpu()
+            self.val_images[prompt_id][step] = batch["image"].to(torch.float16).detach().cpu()
         else:
-            self.metrics[self.prompt_id][step] = {name: metric_tracker.avg(name) for name in metric_tracker.keys()}
-        if step not in self.image_used_steps[self.prompt_id]:
+            self.metrics[prompt_id][step] = {name: metric_tracker.avg(name) for name in metric_tracker.keys()}
+        if step not in self.image_used_steps[prompt_id]:
             self.writer.exp.log_image(
                         image_data=F.to_pil_image(batch["image"][0].to(torch.float16).cpu()), 
-                        name=self.prompts[self.prompt_id], step=step
+                        name=self.prompts[prompt_id], step=step
             )
-            self.image_used_steps[self.prompt_id][step] = True
+            self.image_used_steps[prompt_id][step] = True
 
     def score_val_images(self, reward_model):
         self.val_metrics = [{} for _ in range(len(self.prompts))]
@@ -51,23 +53,46 @@ class GlobalTracker:
                 }, step=pid * num_steps + step_id)
                 step_id += 1
 
-    def log_total(self, save_dir=None, file_name=None):
+    def log_total(self, save_dir=None, file_name=None, main_id=None):
         for pid in range(len(self.metrics)):
             print(f"LOG TOTAL FOR {pid}\n", self.metrics[pid])
-        for step in self.metrics[0].keys():
-            self.writer.exp.log_metrics({
-                    name + '_train': sum(self.metrics[i][step][name] for i in range(len(self.metrics))) / len(self.metrics) 
-                    for name in self.metrics[0][step].keys()
-                },
-                step=step
-            )
-        for step in self.val_metrics[0].keys():
-            self.writer.exp.log_metrics({
-                    name + '_val': sum(self.val_metrics[i][step][name] for i in range(len(self.val_metrics))) / len(self.val_metrics)
-                    for name in self.val_metrics[0][step].keys()
-                },
-                step=step
-            )
+        
+        if main_id is None:
+            for step in self.metrics[0].keys():
+                self.writer.exp.log_metrics({
+                        name + '_train': sum(self.metrics[i][step][name] for i in range(len(self.metrics))) / len(self.metrics) 
+                        for name in self.metrics[0][step].keys()
+                    },
+                    step=step
+                )
+            for step in self.val_metrics[0].keys():
+                self.writer.exp.log_metrics({
+                        name + '_val': sum(self.val_metrics[i][step][name] for i in range(len(self.val_metrics))) / len(self.val_metrics)
+                        for name in self.val_metrics[0][step].keys()
+                    },
+                    step=step
+                )
+        else:
+            for step in self.metrics[0].keys():
+                self.writer.exp.log_metrics({
+                        'Main_' + name + '_train': self.metrics[main_id][step][name]
+                        for name in self.metrics[0][step].keys()
+                    },
+                    step=step
+                )
+            for step in self.val_metrics[0].keys():
+                self.writer.exp.log_metrics({
+                        'Other_' + name + '_val': sum(self.val_metrics[i][step][name] for i in range(len(self.val_metrics)) if i != main_id) / (len(self.val_metrics) - 1)
+                        for name in self.val_metrics[0][step].keys()
+                    },
+                    step=step
+                )
+                self.writer.exp.log_metrics({
+                        'Main_' + name + '_val': self.val_metrics[main_id][step][name]
+                        for name in self.val_metrics[0][step].keys()
+                    },
+                    step=step
+                )
         if save_dir is not None:
             metrics = {"train": self.metrics, "val":self.val_metrics}
             os.makedirs(save_dir, exist_ok=True)
