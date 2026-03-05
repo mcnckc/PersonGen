@@ -139,8 +139,8 @@ def main(config):
             prompts = [p.format(fill_in) for p in prompts]
             print("ALL PROMPTS:", prompts)
             global_tracker = GlobalTracker(device, prompts, writer=writer)
-            if config.train.cross_prompt:
-                main_prompt = config.train.main_prompt
+            if config.trainer.cross_prompt:
+                main_prompt = config.trainer.main_prompt
                 main_id = prompts.index(main_prompt)
                 print("START PROMPT ID", main_id, prompt)
                 start_time = datetime.now()
@@ -219,7 +219,7 @@ def main(config):
             if config.trainer.save_metrics:
                 global_tracker.log_total(save_dir='db_metrics', file_name=config.db_lr+'-'+config.db_steps+'.pkl', main_id=main_id if config.train.cross_prompt else None)
             else:
-                global_tracker.log_total(main_id=main_id if config.train.cross_prompt else None)
+                global_tracker.log_total(main_id=main_id if config.trainer.cross_prompt else None)
         else:
             train(config, device, logger, writer, train_reward_model, val_reward_models)
         print("Finished, stopping profiler")
