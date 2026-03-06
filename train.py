@@ -217,7 +217,7 @@ def main(config):
                 "Total clean cp time": val_reward_models[0].db.cp_clean_time,
             }, step=0)
             if config.trainer.save_metrics:
-                global_tracker.log_total(save_dir='db_metrics', file_name=config.db_lr+'-'+config.db_steps+'.pkl', main_id=main_id if config.train.cross_prompt else None)
+                global_tracker.log_total(save_dir='db_metrics', file_name=config.db_lr+'-'+config.db_steps+'.pkl', main_id=main_id if config.trainer.cross_prompt else None)
             else:
                 global_tracker.log_total(main_id=main_id if config.trainer.cross_prompt else None)
         else:
