@@ -146,11 +146,12 @@ def main(config):
                 start_time = datetime.now()
                 train_reward_model.update_target_prompt(main_prompt)
                 global_tracker.set_prompt(main_id)
-                with open_dict(config.datasets):
-                    config.datasets.train = OmegaConf.merge(config.datasets.train,
-                                                                {"target_prompts":main_prompt})
-                    config.datasets.val = OmegaConf.merge(config.datasets.val,
-                                                                    {"target_prompts":prompts})
+                with open_dict(config.datasets.train):
+                    config.datasets.train.target_prompts = [main_prompt]
+                with open_dict(config.datasets.val):
+                    config.datasets.val.target_prompts = prompts
+                    print("UPDATED VAL DATASET:", len(config.datasets.val.target_prompts))
+                
                 train(config, device, logger, writer, train_reward_model, val_reward_models, True, global_tracker)
                 gc.collect()
                 torch.cuda.empty_cache()
