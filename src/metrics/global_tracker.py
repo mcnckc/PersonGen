@@ -55,7 +55,7 @@ class GlobalTracker:
 
     def log_total(self, save_dir=None, file_name=None, main_id=None):
         for pid in range(len(self.metrics)):
-            print(f"LOG TOTAL FOR {pid}\n", self.metrics[pid])
+            print(f"LOG TOTAL FOR {pid}\n", self.metrics[pid], self.val_metrics[pid])
         
         if main_id is None:
             for step in self.metrics[0].keys():

@@ -346,6 +346,7 @@ class BaseTrainer:
         self.evaluation_metrics.reset()
         print("Validation started")
         with torch.no_grad():
+            self.writer.set_step(epoch * self.epoch_len, part)
             for batch_idx, batch in tqdm(
                 enumerate(dataloader),
                 desc=part,
@@ -361,15 +362,16 @@ class BaseTrainer:
                     for loss_name in self.evaluation_loss_names:
                         loss = batch[loss_name]
                         self.evaluation_metrics.update(loss_name, loss.item() if torch.is_tensor(loss) else loss)
-            self.writer.set_step(epoch * self.epoch_len, part)
+                else:
+                    self.global_tracker.update(self.evaluation_metrics, batch, self.writer.step, prompt_id=batch_idx, val=True)
+            
             print("Log on validation")
             if not self.multi_prompt:
                 self._log_scalars(self.evaluation_metrics)
                 self._log_batch(
                     batch_idx, batch, part 
                 )  # log only the last batch during inference
-            else:
-                self.global_tracker.update(self.evaluation_metrics, batch, self.writer.step, prompt_id=batch_idx, val=True)
+                
 
         return self.evaluation_metrics.result()
 
