@@ -73,7 +73,7 @@ class GlobalTracker:
                     step=step
                 )
         else:
-            for step in self.metrics[0].keys():
+            for step in self.metrics[main_id].keys():
                 self.writer.exp.log_metrics({
                         'Main_' + name + '_train': self.metrics[main_id][step][name]
                         for name in self.metrics[0][step].keys()
