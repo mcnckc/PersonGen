@@ -19,7 +19,7 @@ trainer:
   log_step: 5
   n_epochs: 8
   mode: 'train_many'
-  train_prompts: ['chat_gpt_all']
+  train_prompts: ['chatgpt_all']
   val_prompts: ['', 'live']
   max_prompts_train: -1
   max_prompts_val: -1
