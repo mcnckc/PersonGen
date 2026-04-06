@@ -14,7 +14,7 @@ MODEL_SUFFIX = "ClipTI"
 
 
 class ClipTI(BaseModel):
-    def __init__(self, device: torch.device, target_prompt, src_img_dir, placeholder_token, class_name, t_weight=0.5):
+    def __init__(self, device: torch.device, src_img_dir, placeholder_token, class_name, t_weight=0.5, single_prompt=True, target_prompt=None):
         super().__init__(
             model_suffix=MODEL_SUFFIX, reward_scale_factor=1, reward_offset=0
         )
@@ -24,6 +24,7 @@ class ClipTI(BaseModel):
         self.t_weight = t_weight
         self.model = model
         self.clip_resolution = 224
+        self.single_prompt = single_prompt
         self.tensor_preproc = transforms.Compose(
             [
                 transforms.Resize(
@@ -38,7 +39,9 @@ class ClipTI(BaseModel):
         )
         self.placeholder_token = placeholder_token
         self.class_name = class_name
-        self.update_target_prompt(target_prompt)
+        if single_prompt:
+            if target_prompt is not None:
+                self.update_target_prompt(target_prompt)
         with torch.no_grad():
             src_image_paths = []
             src_images = []
@@ -86,11 +89,22 @@ class ClipTI(BaseModel):
         batch: tp.Dict[str, torch.Tensor],
         image: torch.Tensor,
     ) -> torch.Tensor:
+        print(f"clipTI got reward shape: {image.shape}")
         tg_image = self.model.encode_image(self.tensor_preproc(image))
         tg_image = torch.nn.functional.normalize(tg_image, dim=-1)
-        clipT = self.tg_prompt @ tg_image.T
+        if self.single_prompt:
+            tg_prompt = self.tg_prompt
+        else:
+            with torch.no_grad():
+                tg_prompt = batch[
+                    f"{DatasetColumns.tokenized_text.name}_{self.model_suffix}"
+                ]
+                tg_prompt = self.model.encode_text(tg_prompt)
+                tg_prompt = torch.nn.functional.normalize(tg_prompt, dim=-1)
+        clipT = tg_prompt @ tg_image.T
+        print(f"clipTI reward, tg_prompt shape{tg_prompt.shape}, tg_image.shape:{tg_image.shape}, clipT:{clipT.shape}")
         clipI = tg_image @ self.src_images.T
-        clipT = clipT.mean()
+        clipT = torch.diagonal(clipT).mean()
         clipI = clipI.mean()
         batch["clip_t"] = clipT
         batch["clip_i"] = clipI

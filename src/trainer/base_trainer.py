@@ -303,7 +303,7 @@ class BaseTrainer:
                             )
 
                         self._log_scalars(self.train_metrics)
-                        self._log_batch(batch_idx, batch)
+                        #self._log_batch(batch_idx, batch)
                     else:
                         self.global_tracker.update(self.train_metrics, batch, self.writer.step)
                     # we don't want to reset train metrics at the start of every epoch
@@ -362,15 +362,15 @@ class BaseTrainer:
                     for loss_name in self.evaluation_loss_names:
                         loss = batch[loss_name]
                         self.evaluation_metrics.update(loss_name, loss.item() if torch.is_tensor(loss) else loss)
-                else:
-                    self.global_tracker.update(self.evaluation_metrics, batch, self.writer.step, prompt_id=batch_idx, val=True)
+                
+                self.global_tracker.update(batch, self.writer.step, prompt_id=batch_idx)
             
             print("Log on validation")
             if not self.multi_prompt:
                 self._log_scalars(self.evaluation_metrics)
-                self._log_batch(
-                    batch_idx, batch, part 
-                )  # log only the last batch during inference
+                #self._log_batch(
+                #    batch_idx, batch, part 
+                #)  # log only the last batch during inference
                 
 
         return self.evaluation_metrics.result()

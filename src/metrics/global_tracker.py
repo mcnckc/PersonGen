@@ -99,4 +99,61 @@ class GlobalTracker:
             with open(f'{save_dir}/{file_name}', 'wb') as file_handle:
                 pickle.dump(metrics, file_handle)
 
+class GlobalTrackerMany:
+    """
+    Class to aggregate metrics from many train runs for different prompts.
+    """
+
+    def __init__(self, device, prompts, writer=None):
+        self.device = device
+        self.prompts = prompts
+        self.val_images = [{} for _ in range(len(self.prompts))]
+        self.writer = writer
+    
+
+    def update(self, batch, step: int, prompt_id):
+        self.val_images[prompt_id][step] = batch["image"].to(torch.float16).detach().cpu()
+    
+        self.writer.exp.log_image(
+                image_data=F.to_pil_image(batch["image"][0].to(torch.float16).cpu()), 
+                name=self.prompts[prompt_id], step=step
+        )
+            
+
+    def score_val_images(self, reward_model):
+        self.val_metrics = [{} for _ in range(len(self.prompts))]
+        num_steps = len(self.val_images[0])
+        for pid, prompt in enumerate(self.prompts):
+            reward_model.update_target_prompt(prompt)
+            step_id = 0
+            for step, image in self.val_images[pid].items():
+                start_time = datetime.now()
+                batch = {"image":image.to(self.device)}
+                reward_model.score(batch)
+                print(f"SCORING BATCH: of size {len(batch["image"])}", batch)
+                self.val_metrics[pid][step] = {loss_name: loss for loss_name, loss in batch.items() if loss_name != "image"}
+                self.writer.exp.log_metrics({
+                        "One batch validation time": (datetime.now() - start_time).total_seconds(),
+                }, step=pid * num_steps + step_id)
+                step_id += 1
+
+    def log_total(self, save_dir=None, file_name=None, main_id=None):
+        for pid in range(len(self.metrics)):
+            print(f"LOG TOTAL FOR {pid}\n", self.val_metrics[pid])
+        
+        
+        for step in self.val_metrics[0].keys():
+            self.writer.exp.log_metrics({
+                    name + '_val': sum(self.val_metrics[i][step][name] for i in range(len(self.val_metrics))) / len(self.val_metrics)
+                    for name in self.val_metrics[0][step].keys()
+                },
+                step=step
+            )
+
+        if save_dir is not None:
+            metrics = {"val":self.val_metrics}
+            os.makedirs(save_dir, exist_ok=True)
+            with open(f'{save_dir}/{file_name}', 'wb') as file_handle:
+                pickle.dump(metrics, file_handle)
+
     
