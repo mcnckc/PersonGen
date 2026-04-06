@@ -221,7 +221,7 @@ def main(config):
     set_random_seed(config.trainer.seed)
     project_config = OmegaConf.to_container(config)
     logger = setup_saving_and_logging(config)
-    writer = instantiate(config.writer, logger, project_config)
+    
     if config.trainer.device == "auto":
         print("Device Auto")
         device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -238,7 +238,7 @@ def main(config):
 
     val_reward_models = []
 
-
+    writer = instantiate(config.writer, logger, project_config)
     if config.trainer.mode in ['multi_prompt', 'cross_prompt']:
         global_tracker = train_multi_prompt(config, device, logger, writer, train_reward_model, val_reward_models)
         print("FINISHED ALL PROMPTS")
