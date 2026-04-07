@@ -200,7 +200,7 @@ def train_many_prompt(config, device, logger, writer, train_reward_model, val_re
         config.datasets.val.target_prompts = val_prompts
         print("UPDATED VAL DATASET:", len(config.datasets.val.target_prompts))
     start_time = datetime.now()      
-    train(config, device, logger, writer, train_reward_model, val_reward_models, True, global_tracker)
+    train(config, device, logger, writer, train_reward_model, val_reward_models, False, global_tracker)
     gc.collect()
     torch.cuda.empty_cache()
     print("Trainin took:", (datetime.now() - start_time).total_seconds())
