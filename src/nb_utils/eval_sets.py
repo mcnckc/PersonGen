@@ -1872,12 +1872,12 @@ chatgpt_position_set = [
 ]
 
 evaluation_sets.update({
-    'chatpgt_appearance': chatgpt_appearance_set,
-    'chatpgt_outfit': chatgpt_outfit_set,
-    'chatpgt_background': chatgpt_background_set,
-    'chatpgt_style': chatgpt_style_set,
-    'chatpgt_position': chatgpt_position_set,
-    'chatpgt_all':  chatgpt_appearance_set + chatgpt_outfit_set +
+    'chatgpt_appearance': chatgpt_appearance_set,
+    'chatgpt_outfit': chatgpt_outfit_set,
+    'chatgpt_background': chatgpt_background_set,
+    'chatgpt_style': chatgpt_style_set,
+    'chatgpt_position': chatgpt_position_set,
+    'chatgpt_all':  chatgpt_appearance_set + chatgpt_outfit_set +
      chatgpt_background_set +
      chatgpt_style_set +
     chatgpt_position_set
