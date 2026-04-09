@@ -252,7 +252,7 @@ class BaseTrainer:
         for batch in tqdm(
             self.train_dataloader,
             desc="train",
-            total=self.epoch_len * self.cfg_trainer.accumulation_steps,
+            total=self.epoch_len,
         ):
             for x in batch.items():
                 print(f"ON train, iter:{batch_idx}, {x[1].shape}")
