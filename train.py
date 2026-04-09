@@ -178,6 +178,7 @@ def train_many_prompt(config, device, logger, writer, train_reward_model, val_re
     train_prompts = [p for group in config.trainer.train_prompts for p in evaluation_sets[group]]
     val_prompts = [p for group in config.trainer.val_prompts for p in evaluation_sets[group]]
     if config.trainer.max_prompts_train >= 0:
+        random.shuffle(train_prompts)
         train_prompts = train_prompts[:config.trainer.max_prompts_train]
     if config.trainer.max_prompts_val >= 0:
         val_prompts = val_prompts[:config.trainer.max_prompts_val]
