@@ -205,6 +205,7 @@ def train_many_prompt(config, device, logger, writer, train_reward_model, val_re
     gc.collect()
     torch.cuda.empty_cache()
     print("Trainin took:", (datetime.now() - start_time).total_seconds())
+    return global_tracker
 
 @hydra.main(version_base=None, config_path="src/configs", config_name="refl_train")
 def main(config):
@@ -245,7 +246,7 @@ def main(config):
         print("FINISHED ALL PROMPTS")
         post_validation(config, device, writer, global_tracker, train_reward_model, val_reward_models) 
     elif config.trainer.mode == 'train_many':
-        train_many_prompt(config, device, logger, writer, train_reward_model, val_reward_models)
+        global_tracker = train_many_prompt(config, device, logger, writer, train_reward_model, val_reward_models)
         post_validation(config, device, writer, global_tracker, train_reward_model, val_reward_models) 
     elif config.trainer.mode == 'usual':
         train(config, device, logger, writer, train_reward_model, val_reward_models)

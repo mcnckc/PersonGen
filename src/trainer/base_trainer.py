@@ -303,7 +303,7 @@ class BaseTrainer:
                             )
 
                         self._log_scalars(self.train_metrics)
-                        #self._log_batch(batch_idx, batch)
+                        self._log_batch(batch_idx, batch)
                     else:
                         self.global_tracker.update(self.train_metrics, batch, self.writer.step)
                     # we don't want to reset train metrics at the start of every epoch
