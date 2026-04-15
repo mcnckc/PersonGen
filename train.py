@@ -155,9 +155,6 @@ def post_validation(config, device, writer, global_tracker, train_reward_model, 
             "Clean validation time": (datetime.now() - mid_time).total_seconds(),
         }, step=0)
         writer.exp.log_metrics({
-            "Total validation time per image": (datetime.now() - start_time).total_seconds() / ((config.trainer.n_epochs + 1) * len(prompts)),
-        }, step=0)
-        writer.exp.log_metrics({
             "Total pf calls": val_reward_models[0].db.pf_calls,
         }, step=0)
         writer.exp.log_metrics({
