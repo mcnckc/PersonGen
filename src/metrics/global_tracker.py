@@ -138,7 +138,7 @@ class GlobalTrackerMany:
                 step_id += 1
 
     def log_total(self, save_dir=None, file_name=None, main_id=None):
-        for pid in range(len(self.metrics)):
+        for pid in range(len(self.val_metrics)):
             print(f"LOG TOTAL FOR {pid}\n", self.val_metrics[pid])
         
         
