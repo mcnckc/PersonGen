@@ -174,11 +174,16 @@ def post_validation(config, device, writer, global_tracker, train_reward_model, 
 def train_many_prompt(config, device, logger, writer, train_reward_model, val_reward_models):
     train_prompts = [p for group in config.trainer.train_prompts for p in evaluation_sets[group]]
     val_prompts = [p for group in config.trainer.val_prompts for p in evaluation_sets[group]]
+    val_tr_prompts = train_prompts
     if config.trainer.max_prompts_train >= 0:
         random.shuffle(train_prompts)
         train_prompts = train_prompts[:config.trainer.max_prompts_train]
     if config.trainer.max_prompts_val >= 0:
         val_prompts = val_prompts[:config.trainer.max_prompts_val]
+    if config.trainer.max_prompts_val_tr >= 0:
+        random.shuffle(train_prompts)
+        val_prompts = train_prompts[:config.trainer.max_prompts_val_tr]
+
     print(f"Using {len(train_prompts)} for training, {len(val_prompts)} for validation")
     if config.clean_model:
         fill_in = config.reward_models.train_model.class_name
@@ -188,6 +193,8 @@ def train_many_prompt(config, device, logger, writer, train_reward_model, val_re
     print("FILL IN FOR PROMPTS:", fill_in)
     train_prompts = [p.format(fill_in) for p in train_prompts]
     val_prompts = [p.format(fill_in) for p in val_prompts]
+    #val_tr_prompts = [p.format(fill_in) for p in val_tr_prompts]
+
     print("ALL PROMPTS:", train_prompts, val_prompts)
     global_tracker = GlobalTrackerMany(device, val_prompts, writer=writer)
     
