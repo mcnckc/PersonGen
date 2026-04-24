@@ -17,13 +17,13 @@ trainer:
   min_mid_timestep: 30
   max_mid_timestep: 40
   log_step: 5
-  n_epochs: 4
+  n_epochs: 12
   mode: 'train_many'
   train_prompts: ['chatgpt_appearance', 'chatgpt_outfit', 'chatgpt_background', 'chatgpt_position']
   val_prompts: ['', 'live']
-  max_prompts_train: -1
+  max_prompts_train: 20
   max_prompts_val: -1
-  max_prompts_val_tr: 26
+  max_prompts_val_tr: 20
   train_loss_names: ['loss', 'clip_t', 'clip_i']
   eval_loss_names: ['clip_t', 'clip_i']
   resume_from: null # null or path to the checkpoint dir with *.pth and config.yaml
