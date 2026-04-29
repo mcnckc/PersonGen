@@ -21,6 +21,7 @@ trainer:
   mode: 'train_many'
   train_prompts: ['chatgpt_appearance', 'chatgpt_outfit', 'chatgpt_background', 'chatgpt_position']
   val_prompts: ['', 'live']
+  epoch_len: 100
   max_prompts_train: 20
   max_prompts_val: -1
   max_prompts_val_tr: 20
