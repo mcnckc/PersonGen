@@ -182,7 +182,7 @@ def train_many_prompt(config, device, logger, writer, train_reward_model, val_re
         val_prompts = val_prompts[:config.trainer.max_prompts_val]
     if config.trainer.max_prompts_val_tr >= 0:
         random.shuffle(train_prompts)
-        val_prompts = train_prompts[:config.trainer.max_prompts_val_tr]
+        val_tr_prompts = train_prompts[:config.trainer.max_prompts_val_tr]
 
     print(f"Using {len(train_prompts)} for training, {len(val_prompts)} for validation")
     if config.clean_model:

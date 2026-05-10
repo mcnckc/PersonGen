@@ -17,11 +17,11 @@ trainer:
   min_mid_timestep: 30
   max_mid_timestep: 40
   log_step: 5
-  n_epochs: 12
+  n_epochs: 100
   mode: 'train_many'
   train_prompts: ['chatgpt_appearance', 'chatgpt_outfit', 'chatgpt_background', 'chatgpt_position']
   val_prompts: ['', 'live']
-  epoch_len: 100
+  epoch_len: 10
   max_prompts_train: 20
   max_prompts_val: -1
   max_prompts_val_tr: 20
